@@ -52,3 +52,15 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 - **Chose:** To *not* write to the `AuditTimeline` when users edit ticket details (subject, description, priority, category) or when they archive/restore tickets.
 - **Rejected:** Creating a generic `TICKET_EDITED` or `TICKET_ARCHIVED` event for the timeline.
 - **Why:** Goal 9 strictly defines the required audit history: "when it changed status, when it was reassigned, and any replies." There is no requirement to log plain field edits or queue visibility changes. Expanding the timeline to include these would pollute the strictly required event types.
+
+## Decision 9: AuthorType Verification (Goal 3)
+
+- **Chose:** To trust the submitting agent's self-reported authorType.
+- **Rejected:** Independently verifying the author or refusing simulated customer replies.
+- **Why:** authorType is a self-reported flag set by the submitting agent, not independently verified — there is no proof a customer actually said what's logged as their reply. This is an accepted limitation given the assignment's scope excludes email/customer-portal integration; a production system would instead derive authorType: CUSTOMER automatically from an inbound email webhook, removing agent self-reporting from the trust boundary entirely.
+
+## Decision 10: AuditTimeline Actor vs Reply Author
+
+- **Chose:** AuditTimeline.actor always records the logged-in user submitting the API request, even for simulated customer replies.
+- **Rejected:** Setting AuditTimeline.actorId to null or a customer ID for simulated customer replies.
+- **Why:** AuditTimeline.actor = who performed the logging action in the app, while Reply.authorType = who the message is attributed to — these are deliberately different fields answering different questions, not redundant. Since customers never authenticate, they cannot be the actor performing the logging action in this system.

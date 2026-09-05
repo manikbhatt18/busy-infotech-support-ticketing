@@ -9,6 +9,8 @@ import {
 } from '../controllers/tickets';
 import { authenticateToken } from '../middleware/auth';
 
+import repliesRoutes from './replies';
+
 const router = Router();
 
 // All ticket routes require authentication
@@ -23,5 +25,8 @@ router.post('/', createTicket);
 router.put('/:id', updateTicketDetails);
 router.patch('/:id/archive', archiveTicket);
 router.patch('/:id/restore', restoreTicket);
+
+// --- Goal 3 Routes ---
+router.use('/:id/replies', repliesRoutes);
 
 export default router;

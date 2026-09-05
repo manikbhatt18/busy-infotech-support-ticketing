@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import TicketModal, { TicketFormData } from "@/components/TicketModal";
+import TicketDetailsModal from "@/components/TicketDetailsModal";
 
 export default function Dashboard() {
   const { user, logout, loading } = useAuth();
@@ -18,6 +19,8 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE");
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+
+  const [detailsModalTicket, setDetailsModalTicket] = useState<any | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -173,8 +176,11 @@ export default function Dashboard() {
               tickets.map((ticket) => (
                 <li key={ticket.id} className="px-6 py-4 hover:bg-gray-50">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900">{ticket.subject}</p>
+                    <div 
+                      className="cursor-pointer flex-1 mr-4"
+                      onClick={() => setDetailsModalTicket(ticket)}
+                    >
+                      <p className="font-medium text-gray-900 hover:text-blue-600">{ticket.subject}</p>
                       <p className="text-sm text-gray-500">
                         Requester: {ticket.requesterEmail} | Status: {ticket.status} | Priority: {ticket.priority} | Category: {ticket.category}
                       </p>
@@ -185,6 +191,7 @@ export default function Dashboard() {
                           <select
                             className="rounded border border-gray-300 text-xs px-2 py-1 text-black"
                             value={ticket.primaryAssigneeId || ""}
+                            onClick={(e) => e.stopPropagation()}
                             onChange={(e) => handleReassignTicket(ticket.id, e.target.value)}
                           >
                             <option value="" disabled>Reassign to...</option>
@@ -198,23 +205,33 @@ export default function Dashboard() {
                       </div>
                     </div>
                     
-                    {/* Hide Edit/Archive actions if Agent does not have permission */}
-                    {canActOnTicket(ticket) && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => openEditModal(ticket)}
-                          className="rounded border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleToggleArchive(ticket)}
-                          className="rounded border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                        >
-                          {isArchivedView ? 'Restore' : 'Archive'}
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {/* View Details is ALWAYS visible for every ticket */}
+                      <button
+                        onClick={() => setDetailsModalTicket(ticket)}
+                        className="rounded border border-blue-300 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                      >
+                        View Details
+                      </button>
+
+                      {/* Edit and Archive actions for authorized agents/supervisors */}
+                      {canActOnTicket(ticket) && (
+                        <>
+                          <button
+                            onClick={() => openEditModal(ticket)}
+                            className="rounded border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleToggleArchive(ticket)}
+                            className="rounded border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                          >
+                            {isArchivedView ? 'Restore' : 'Archive'}
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </li>
               ))
@@ -238,6 +255,13 @@ export default function Dashboard() {
         title={modalMode === "CREATE" ? "Create New Ticket" : "Edit Ticket"}
         users={users}
         isSupervisor={user.role === 'SUPERVISOR'}
+      />
+
+      <TicketDetailsModal
+        isOpen={!!detailsModalTicket}
+        onClose={() => setDetailsModalTicket(null)}
+        ticket={detailsModalTicket}
+        currentUser={user}
       />
     </div>
   );

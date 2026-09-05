@@ -138,10 +138,50 @@ const createTicketSchema = z.object({
   requesterEmail: z.string().email('Invalid email'),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
   category: z.string().min(1, 'Category is required'),
+  primaryAssigneeId: z.string().nullable().optional(),
 });
 
 export const createTicket = async (req: AuthRequest, res: Response): Promise<void> => {
-  // To be fully implemented after plan approval
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { primaryAssigneeId, ...data } = createTicketSchema.parse(req.body);
+
+    const ticket = await prisma.$transaction(async (tx) => {
+      const newTicket = await tx.ticket.create({
+        data: {
+          ...data,
+          primaryAssigneeId: primaryAssigneeId || user.userId, // Decision 6: Auto-assign creator if unspecified
+        },
+        include: {
+          primaryAssignee: { select: { id: true, name: true, email: true } },
+        }
+      });
+
+      await tx.auditTimeline.create({
+        data: {
+          ticketId: newTicket.id,
+          actorId: user.userId,
+          eventType: 'TICKET_CREATED',
+        },
+      });
+
+      return newTicket;
+    });
+
+    res.status(201).json(ticket);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.issues });
+    } else {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
 };
 
 // --- PUT /tickets/:id (Goal 2: Edit Details) ---
@@ -188,7 +228,7 @@ export const updateTicketDetails = async (req: AuthRequest, res: Response): Prom
     res.json(updatedTicket);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors });
+      res.status(400).json({ error: error.issues });
     } else {
       console.error(error);
       res.status(500).json({ error: 'Internal server error' });

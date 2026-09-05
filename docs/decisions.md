@@ -23,14 +23,14 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 - **Rejected:** Attributing customer replies to a synthetic "System" user or making all customers full `User` accounts in the system.
 - **Why:** The audit trail (Goal 9) must record exactly who acted, and a fake "System" user corrupts this history. Furthermore, Goal 4's clock-resume logic explicitly needs to query on whether a reply came from a customer. An explicit type ensures the system can differentiate without complex JOINs or brittle string matching on a system account.
 
-## Decision 4
+## Decision 4: Agent Ticket Closing Permissions
 
-- **Chose:**
-- **Rejected:**
-- **Why:**
+- **Chose:** Agents are strictly prevented from transitioning a ticket to the `CLOSED` status, even if they are the primary assignee.
+- **Rejected:** Allowing agents to close their own tickets.
+- **Why:** Goal 1 explicitly states "Supervisors can reassign any ticket to any agent, close tickets, and see the entire queue." This specific callout for supervisors implies that closing tickets is an elevated privilege not granted to agents.
 
-## Decision 5
+## Decision 5: Collaborator Reassignment Interpretation
 
-- **Chose:**
-- **Rejected:**
-- **Why:**
+- **Chose:** Agents (whether primary assignee or collaborator) cannot change the `primaryAssigneeId` to anyone else. They are locked out of reassignment entirely.
+- **Rejected:** Allowing a collaborator to reassign the ticket to themselves, or allowing the primary assignee to reassign it to a collaborator.
+- **Why:** Goal 1 states "Agents ... cannot reassign a ticket away from themselves." If a collaborator reassigned a ticket to themselves, they would be reassigning it *away* from the current primary assignee (another agent), which violates the rule. Therefore, agents cannot modify the assignee field at all.

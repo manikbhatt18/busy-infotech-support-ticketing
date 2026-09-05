@@ -34,3 +34,21 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 - **Chose:** Agents (whether primary assignee or collaborator) cannot change the `primaryAssigneeId` to anyone else. They are locked out of reassignment entirely.
 - **Rejected:** Allowing a collaborator to reassign the ticket to themselves, or allowing the primary assignee to reassign it to a collaborator.
 - **Why:** Goal 1 states "Agents ... cannot reassign a ticket away from themselves." If a collaborator reassigned a ticket to themselves, they would be reassigning it *away* from the current primary assignee (another agent), which violates the rule. Therefore, agents cannot modify the assignee field at all.
+
+## Decision 6: Initial Ticket Assignment (Goal 2)
+
+- **Chose:** When an Agent or Supervisor creates a ticket, they are automatically set as the `primaryAssigneeId`.
+- **Rejected:** Leaving the ticket unassigned (`primaryAssigneeId: null`) upon creation.
+- **Why:** Goal 1 strictly restricts Agents to only act on tickets where they are the primary assignee or a collaborator. If an Agent created a ticket and it was left unassigned, they would immediately lose all read/write access to the very ticket they just created, which is a poor user experience. Automatically assigning the creator ensures they maintain access and can continue editing or triaging the ticket.
+
+## Decision 7: Requester Modeling
+
+- **Chose:** Store the `requesterEmail` as a simple string on the `Ticket` model.
+- **Rejected:** Creating a separate `Customer` or `Requester` user model with authentication and linking it via a foreign key.
+- **Why:** Customers never authenticate into this system. Modeling them as a `User` would bloat the `User` table with non-authenticated records and complicate the authentication logic. A plain string is sufficient for tracking the requester and interacting with them via hypothetical email channels.
+
+## Decision 8: AuditTimeline Exclusions
+
+- **Chose:** To *not* write to the `AuditTimeline` when users edit ticket details (subject, description, priority, category) or when they archive/restore tickets.
+- **Rejected:** Creating a generic `TICKET_EDITED` or `TICKET_ARCHIVED` event for the timeline.
+- **Why:** Goal 9 strictly defines the required audit history: "when it changed status, when it was reassigned, and any replies." There is no requirement to log plain field edits or queue visibility changes. Expanding the timeline to include these would pollute the strictly required event types.

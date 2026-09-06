@@ -14,13 +14,41 @@ export default function Dashboard() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [error, setError] = useState("");
+  
+  // Base view
   const [isArchivedView, setIsArchivedView] = useState(false);
+  
+  // Filter States
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [priority, setPriority] = useState("");
+  const [category, setCategory] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+  
+  // Pagination States
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalTickets, setTotalTickets] = useState(0);
+  const limit = 10;
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE");
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
-
   const [detailsModalTicket, setDetailsModalTicket] = useState<any | null>(null);
+
+  // Debounce search input automatically
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (search !== searchInput) {
+        setSearch(searchInput);
+        setPage(1);
+      }
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchInput, search]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -30,8 +58,25 @@ export default function Dashboard() {
 
   const fetchTickets = () => {
     if (user) {
-      apiFetch(`/tickets?isArchived=${isArchivedView}`)
-        .then((data) => setTickets(data))
+      const params = new URLSearchParams();
+      params.append('isArchived', String(isArchivedView));
+      params.append('page', String(page));
+      params.append('limit', String(limit));
+      
+      if (search) params.append('search', search);
+      if (status) params.append('status', status);
+      if (priority) params.append('priority', priority);
+      if (category) params.append('category', category);
+      if (assigneeId) params.append('assigneeId', assigneeId);
+      if (sortBy) params.append('sortBy', sortBy);
+      if (sortOrder) params.append('sortOrder', sortOrder);
+
+      apiFetch(`/tickets?${params.toString()}`)
+        .then((res) => {
+          setTickets(res.data || []);
+          setTotalTickets(res.total || 0);
+          setTotalPages(res.totalPages || 1);
+        })
         .catch((err) => setError(err.message || "Failed to load tickets"));
     }
   };
@@ -40,20 +85,22 @@ export default function Dashboard() {
     if (user) {
       apiFetch('/auth/users')
         .then((data) => setUsers(data))
-        .catch(() => {}); // optional
+        .catch(() => {});
     }
   };
 
   useEffect(() => {
     fetchTickets();
+  }, [user, isArchivedView, search, status, priority, category, assigneeId, sortBy, sortOrder, page]);
+
+  useEffect(() => {
     fetchUsers();
-  }, [user, isArchivedView]);
+  }, [user]);
 
   if (loading || !user) {
     return <div className="p-8 text-center">Loading...</div>;
   }
 
-  // Determine if the current user can act on the ticket
   const canActOnTicket = (ticket: any) => {
     if (user.role === 'SUPERVISOR') return true;
     const isAssignee = ticket.primaryAssigneeId === user.id;
@@ -76,15 +123,9 @@ export default function Dashboard() {
   const handleModalSubmit = async (data: TicketFormData) => {
     try {
       if (modalMode === "CREATE") {
-        await apiFetch("/tickets", {
-          method: "POST",
-          body: JSON.stringify(data),
-        });
+        await apiFetch("/tickets", { method: "POST", body: JSON.stringify(data) });
       } else if (modalMode === "EDIT" && selectedTicket) {
-        await apiFetch(`/tickets/${selectedTicket.id}`, {
-          method: "PUT",
-          body: JSON.stringify(data),
-        });
+        await apiFetch(`/tickets/${selectedTicket.id}`, { method: "PUT", body: JSON.stringify(data) });
       }
       setIsModalOpen(false);
       fetchTickets();
@@ -115,6 +156,18 @@ export default function Dashboard() {
     }
   };
 
+  const clearFilters = () => {
+    setSearchInput("");
+    setSearch("");
+    setStatus("");
+    setPriority("");
+    setCategory("");
+    setAssigneeId("");
+    setSortBy("createdAt");
+    setSortOrder("desc");
+    setPage(1);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -142,13 +195,13 @@ export default function Dashboard() {
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
             <button
-              onClick={() => setIsArchivedView(false)}
+              onClick={() => { setIsArchivedView(false); setPage(1); }}
               className={`rounded-md px-4 py-2 text-sm font-medium ${!isArchivedView ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
             >
               Active Queue
             </button>
             <button
-              onClick={() => setIsArchivedView(true)}
+              onClick={() => { setIsArchivedView(true); setPage(1); }}
               className={`rounded-md px-4 py-2 text-sm font-medium ${isArchivedView ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
             >
               Archived Queue
@@ -162,16 +215,105 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {/* Filters Bar */}
+        <div className="rounded-lg bg-white shadow p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-gray-700">Find Tickets</h3>
+            <button onClick={clearFilters} className="text-sm text-blue-600 hover:underline">
+              Clear Filters
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <input
+                type="text"
+                placeholder="Search subject or description..."
+                className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-black"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
+            
+            <select
+              value={status}
+              onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-black"
+            >
+              <option value="">Any Status</option>
+              <option value="NEW">NEW</option>
+              <option value="OPEN">OPEN</option>
+              <option value="PENDING">PENDING</option>
+              <option value="RESOLVED">RESOLVED</option>
+              <option value="CLOSED">CLOSED</option>
+            </select>
+
+            <select
+              value={priority}
+              onChange={(e) => { setPriority(e.target.value); setPage(1); }}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-black"
+            >
+              <option value="">Any Priority</option>
+              <option value="URGENT">URGENT</option>
+              <option value="HIGH">HIGH</option>
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="LOW">LOW</option>
+            </select>
+
+            <input
+              type="text"
+              placeholder="Category (Exact match)"
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-black"
+              value={category}
+              onChange={(e) => { setCategory(e.target.value); setPage(1); }}
+            />
+
+            <select
+              value={assigneeId}
+              onChange={(e) => { setAssigneeId(e.target.value); setPage(1); }}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-black"
+            >
+              <option value="">Any Assignee</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-black"
+            >
+              <option value="createdAt">Sort by: Created Date</option>
+              <option value="priority">Sort by: Priority</option>
+              <option value="updatedAt">Sort by: Last Update</option>
+            </select>
+
+            <select
+              value={sortOrder}
+              onChange={(e) => { setSortOrder(e.target.value); setPage(1); }}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-black"
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Ticket List */}
         <div className="rounded-lg bg-white shadow">
-          <div className="border-b border-gray-200 px-6 py-4">
+          <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
             <h2 className="text-lg font-medium text-gray-900">
-              {isArchivedView ? 'Archived Tickets' : (user.role === 'SUPERVISOR' ? 'All Active Tickets (Queue)' : 'My Active Assigned & Collaborating Tickets')}
+              {isArchivedView ? 'Archived Tickets' : (user.role === 'SUPERVISOR' ? 'All Active Tickets' : 'My Active Tickets')}
             </h2>
+            <span className="text-sm text-gray-500">
+              Showing {tickets.length} of {totalTickets}
+            </span>
           </div>
           
           <ul className="divide-y divide-gray-200">
             {tickets.length === 0 ? (
-              <li className="px-6 py-8 text-center text-gray-500">No tickets found.</li>
+              <li className="px-6 py-8 text-center text-gray-500">No tickets found matching your filters.</li>
             ) : (
               tickets.map((ticket) => (
                 <li key={ticket.id} className="px-6 py-4 hover:bg-gray-50">
@@ -206,7 +348,6 @@ export default function Dashboard() {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      {/* View Details is ALWAYS visible for every ticket */}
                       <button
                         onClick={() => setDetailsModalTicket(ticket)}
                         className="rounded border border-blue-300 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 hover:bg-blue-100"
@@ -214,7 +355,6 @@ export default function Dashboard() {
                         View Details
                       </button>
 
-                      {/* Edit and Archive actions for authorized agents/supervisors */}
                       {canActOnTicket(ticket) && (
                         <>
                           <button
@@ -237,6 +377,29 @@ export default function Dashboard() {
               ))
             )}
           </ul>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-between">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-gray-600">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -264,7 +427,6 @@ export default function Dashboard() {
         currentUser={user}
         allUsers={users}
         onTicketUpdated={(updatedTicket) => {
-          // Refresh ticket row in list after status/SLA change
           setTickets((prev) =>
             prev.map((t) => (t.id === updatedTicket.id ? { ...t, ...updatedTicket } : t))
           );

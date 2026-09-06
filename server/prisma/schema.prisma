@@ -35,11 +35,12 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  assignedTickets Ticket[]             @relation("PrimaryAssignee")
-  collaboratingOn TicketCollaborator[]
-  authoredReplies Reply[]
-  auditEvents     AuditTimeline[]
-  slaAcks         SlaAcknowledgment[]
+  assignedTickets      Ticket[]             @relation("PrimaryAssignee")
+  collaboratingOn      TicketCollaborator[]
+  authoredReplies      Reply[]
+  auditEventsAsActor   AuditTimeline[]      @relation("ActorAudit")
+  auditEventsAsCollab  AuditTimeline[]      @relation("CollaboratorAudit")
+  slaAcks              SlaAcknowledgment[]
 }
 
 model Ticket {
@@ -109,6 +110,8 @@ enum AuditEventType {
   STATUS_CHANGED
   REASSIGNED
   REPLY_ADDED
+  COLLABORATOR_ADDED
+  COLLABORATOR_REMOVED
 }
 
 model AuditTimeline {
@@ -117,17 +120,21 @@ model AuditTimeline {
   ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   actorId String
-  actor   User   @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  actor   User   @relation("ActorAudit", fields: [actorId], references: [id], onDelete: Restrict)
 
   eventType AuditEventType
 
   // Contextual data depending on eventType
   oldStatus     TicketStatus?
   newStatus     TicketStatus?
-  oldAssigneeId String?
-  newAssigneeId String?
-  replyId       String?
-  reply         Reply?         @relation(fields: [replyId], references: [id], onDelete: SetNull)
+  oldAssigneeId  String?
+  newAssigneeId  String?
+  replyId        String?
+  reply          Reply?  @relation(fields: [replyId], references: [id], onDelete: SetNull)
+
+  // Goal 5: set for COLLABORATOR_ADDED / COLLABORATOR_REMOVED events
+  collaboratorId String?
+  collaborator   User?   @relation("CollaboratorAudit", fields: [collaboratorId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 }

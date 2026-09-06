@@ -18,6 +18,7 @@ interface TicketDetailsModalProps {
   onClose: () => void;
   ticket: any | null;
   currentUser: any;
+  allUsers?: any[];
   onTicketUpdated?: (updatedTicket: any) => void;
 }
 
@@ -63,6 +64,7 @@ export default function TicketDetailsModal({
   onClose,
   ticket,
   currentUser,
+  allUsers,
   onTicketUpdated,
 }: TicketDetailsModalProps) {
   const [replies, setReplies] = useState<any[]>([]);
@@ -77,6 +79,9 @@ export default function TicketDetailsModal({
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusError, setStatusError] = useState("");
 
+  // Goal 5: Collaborator state
+  const [collabError, setCollabError] = useState("");
+
   // Live ticket state (updated after status transitions)
   const [liveTicket, setLiveTicket] = useState<any | null>(null);
 
@@ -87,6 +92,7 @@ export default function TicketDetailsModal({
       setReplyBody("");
       setIsInternal(false);
       setStatusError("");
+      setCollabError("");
     }
   }, [isOpen, ticket]);
 
@@ -159,6 +165,40 @@ export default function TicketDetailsModal({
     }
   };
 
+  const handleAddCollaborator = async (userId: string) => {
+    if (!userId || !liveTicket) return;
+    setCollabError("");
+    try {
+      const updated = await apiFetch(`/tickets/${liveTicket.id}/collaborators`, {
+        method: "POST",
+        body: JSON.stringify({ userId }),
+      });
+      setLiveTicket(updated);
+      onTicketUpdated?.(updated);
+    } catch (err: any) {
+      setCollabError(err.message || "Failed to add collaborator");
+    }
+  };
+
+  const handleRemoveCollaborator = async (userId: string) => {
+    if (!liveTicket) return;
+    setCollabError("");
+    try {
+      await apiFetch(`/tickets/${liveTicket.id}/collaborators/${userId}`, {
+        method: "DELETE",
+      });
+      // Removing a collaborator returns 204 No Content. We manually update the local state.
+      const updated = {
+        ...liveTicket,
+        collaborators: liveTicket.collaborators.filter((c: any) => c.userId !== userId),
+      };
+      setLiveTicket(updated);
+      onTicketUpdated?.(updated);
+    } catch (err: any) {
+      setCollabError(err.message || "Failed to remove collaborator");
+    }
+  };
+
   if (!isOpen || !liveTicket) return null;
 
   const slaDisplay = getSlaDisplay(liveTicket);
@@ -176,6 +216,18 @@ export default function TicketDetailsModal({
     RESOLVED: 'bg-green-100 text-green-700',
     CLOSED: 'bg-gray-200 text-gray-500',
   };
+
+  // Helper to determine if current user can manage collaborators
+  const canManageCollaborators =
+    currentUser.role === 'SUPERVISOR' || currentUser.id === liveTicket.primaryAssigneeId;
+
+  // Filter for available agents to add (AGENT role, not primary assignee, not already added)
+  const availableAgents = allUsers?.filter((u: any) => {
+    if (u.role !== 'AGENT') return false;
+    if (u.id === liveTicket.primaryAssigneeId) return false;
+    if (liveTicket.collaborators?.some((c: any) => c.userId === u.id)) return false;
+    return true;
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black bg-opacity-50 p-4">
@@ -239,6 +291,51 @@ export default function TicketDetailsModal({
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto bg-gray-50 p-6 text-gray-900">
+          
+          {/* Goal 5: Collaborators Panel */}
+          <div className="mb-6 rounded-lg bg-white p-4 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center justify-between">
+              Collaborators
+              {canManageCollaborators && availableAgents && availableAgents.length > 0 && (
+                <select
+                  className="ml-4 text-xs rounded border border-gray-300 py-1 px-2 font-normal text-gray-700 bg-white cursor-pointer"
+                  value=""
+                  onChange={(e) => handleAddCollaborator(e.target.value)}
+                >
+                  <option value="" disabled>+ Add Collaborator</option>
+                  {availableAgents.map((u: any) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              )}
+            </h3>
+            
+            {collabError && <p className="text-xs text-red-600 mb-2">{collabError}</p>}
+            
+            <div className="flex flex-wrap gap-2">
+              {!liveTicket.collaborators || liveTicket.collaborators.length === 0 ? (
+                <span className="text-xs text-gray-500 italic">No collaborators yet.</span>
+              ) : (
+                liveTicket.collaborators.map((c: any) => (
+                  <div key={c.userId} className="flex items-center gap-1 bg-gray-100 border border-gray-200 rounded-full px-2 py-1 text-xs">
+                    <span className="font-medium text-gray-700" title={c.user?.email}>{c.user?.name || c.userId}</span>
+                    {canManageCollaborators && (
+                      <button
+                        onClick={() => handleRemoveCollaborator(c.userId)}
+                        className="text-gray-400 hover:text-red-500 ml-1 rounded-full p-0.5"
+                        title="Remove collaborator"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
           <div className="mb-6 rounded-lg bg-white p-4 shadow-sm border border-gray-100">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">Original Description</h3>
             <p className="whitespace-pre-wrap text-sm text-gray-800">{liveTicket.description}</p>

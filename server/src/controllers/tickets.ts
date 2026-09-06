@@ -69,7 +69,11 @@ export const getTickets = async (req: AuthRequest, res: Response): Promise<void>
         orderBy: { createdAt: 'desc' },
         include: {
           primaryAssignee: { select: { id: true, name: true, email: true } },
-          collaborators: true,
+          collaborators: {
+            include: {
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
         }
       });
     } else {
@@ -85,7 +89,11 @@ export const getTickets = async (req: AuthRequest, res: Response): Promise<void>
         orderBy: { createdAt: 'desc' },
         include: {
           primaryAssignee: { select: { id: true, name: true, email: true } },
-          collaborators: true,
+          collaborators: {
+            include: {
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
         }
       });
     }
@@ -156,7 +164,11 @@ export const updateTicketTriage = async (req: AuthRequest, res: Response): Promi
         },
         include: {
           primaryAssignee: { select: { id: true, name: true, email: true } },
-          collaborators: true,
+          collaborators: {
+            include: {
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
         }
       });
 
@@ -215,7 +227,11 @@ export const createTicket = async (req: AuthRequest, res: Response): Promise<voi
         },
         include: {
           primaryAssignee: { select: { id: true, name: true, email: true } },
-          collaborators: true,
+          collaborators: {
+            include: {
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
         }
       });
 
@@ -511,7 +527,11 @@ export const updateTicketStatus = async (req: AuthRequest, res: Response): Promi
         data: updateData as any,
         include: {
           primaryAssignee: { select: { id: true, name: true, email: true } },
-          collaborators: true,
+          collaborators: {
+            include: {
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
         },
       });
 

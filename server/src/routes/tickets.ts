@@ -8,6 +8,7 @@ import {
   restoreTicket,
   updateTicketStatus,
 } from '../controllers/tickets';
+import { addCollaborator, removeCollaborator } from '../controllers/collaborators';
 import { authenticateToken } from '../middleware/auth';
 
 import repliesRoutes from './replies';
@@ -33,5 +34,9 @@ router.use('/:id/replies', repliesRoutes);
 // --- Goal 4 Routes ---
 // Status transitions — must come AFTER /archive and /restore to avoid route conflicts
 router.patch('/:id/status', updateTicketStatus);
+
+// --- Goal 5 Routes ---
+router.post('/:id/collaborators', addCollaborator);
+router.delete('/:id/collaborators/:userId', removeCollaborator);
 
 export default router;

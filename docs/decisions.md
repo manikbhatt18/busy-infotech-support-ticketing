@@ -128,3 +128,20 @@ When priority changes AND `ticket.status === 'PENDING'`, BOTH fields must reset 
 - **Chose:** URGENT=1h, HIGH=4h, MEDIUM=24h, LOW=48h. Reopening window=7 days.
 - **Why these numbers:** The spec leaves both values explicitly to the implementer. The SLA tiers match common support-industry tiered response standards (critical/same-hour, high/same-half-day, normal/next-business-day, low/two-day). 7 days gives supervisors and agents a full work-week to catch accidental closures, which is the standard "hold period" in most helpdesk systems.
 
+## Decision 15: canManageCollaborators vs canAgentActOnTicket (Goal 5)
+
+- **Chose:** A dedicated `canManageCollaborators` helper that only permits SUPERVISOR or the primary assignee to add/remove collaborators.
+- **Rejected:** Reusing the existing `canAgentActOnTicket` helper for `addCollaborator` and `removeCollaborator`.
+- **Why:** `canAgentActOnTicket` deliberately allows collaborators to act on a ticket. If reused for collaborator management, it would allow a collaborator to add/remove *other* collaborators, which is a privilege escalation path. Only the ticket owner (primary assignee) or a supervisor should dictate who else gets access.
+
+## Decision 16: Only AGENTs as Collaborators (Goal 5)
+
+- **Chose:** To enforce that only users with `role === 'AGENT'` can be added as collaborators.
+- **Rejected:** Allowing a SUPERVISOR to be added as a collaborator.
+- **Why:** Supervisors inherently have full read/write access to every ticket in the system. Adding them to the `TicketCollaborator` join table creates meaningless redundancy in the database and implies a limitation on their access that doesn't actually exist.
+
+## Decision 17: Supervisor "My Tickets" Toggle Deprioritization (Goal 5)
+
+- **Chose:** To deliberately exclude a "My Tickets" view/toggle for Supervisors from the Goal 5 scope.
+- **Rejected:** Building the frontend toggle for supervisors.
+- **Why:** The spec requires: *"Every agent can see one list of every ticket where they are the primary assignee or a collaborator."* Agents already get this exact behavior automatically via Goal 1's `OR`-filter (which restricts them to only their assigned/collaborating tickets). A supervisor toggle to filter their view down to their *own* assignments is a UX convenience, not a Goal 5 requirement. Building it now would consume time on a non-required feature while Goals 6-10 remain unimplemented.

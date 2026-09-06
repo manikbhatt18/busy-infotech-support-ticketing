@@ -262,6 +262,7 @@ export default function Dashboard() {
         onClose={() => setDetailsModalTicket(null)}
         ticket={detailsModalTicket}
         currentUser={user}
+        allUsers={users}
         onTicketUpdated={(updatedTicket) => {
           // Refresh ticket row in list after status/SLA change
           setTickets((prev) =>

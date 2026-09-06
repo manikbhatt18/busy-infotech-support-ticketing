@@ -22,5 +22,12 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     throw new Error(errorData.error || 'API request failed');
   }
 
+  // 204 No Content (and 205 Reset Content) have no body — calling .json() on them
+  // throws a parse error. Return null so callers that don't need the body (e.g.
+  // DELETE /collaborators) can still treat the request as successful.
+  if (response.status === 204 || response.status === 205) {
+    return null;
+  }
+
   return response.json();
 };

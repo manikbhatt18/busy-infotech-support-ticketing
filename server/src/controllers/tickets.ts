@@ -48,6 +48,19 @@ const ALLOWED_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   CLOSED:   ['OPEN'],  // only within 7-day window, checked separately
 };
 
+const getTicketsQuerySchema = z.object({
+  isArchived: z.string().optional().transform(val => val === 'true'),
+  search: z.string().optional().transform(val => val || undefined),
+  status: z.enum(['NEW', 'OPEN', 'PENDING', 'RESOLVED', 'CLOSED']).optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  category: z.string().optional().transform(val => val || undefined),
+  assigneeId: z.string().optional().transform(val => val || undefined),
+  sortBy: z.enum(['createdAt', 'priority', 'updatedAt']).optional().default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  page: z.string().optional().transform(val => (val ? parseInt(val, 10) : 1)).pipe(z.number().min(1)),
+  limit: z.string().optional().transform(val => (val ? parseInt(val, 10) : 10)).pipe(z.number().min(1).max(100)),
+});
+
 // --- GET /tickets ---
 export const getTickets = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -57,48 +70,88 @@ export const getTickets = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    // Explicitly default to active-only if isArchived is omitted
-    const isArchived = req.query.isArchived === 'true';
+    const parsed = getTicketsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid query parameters', details: parsed.error.issues });
+      return;
+    }
 
-    let tickets;
+    const {
+      isArchived,
+      search,
+      status,
+      priority,
+      category,
+      assigneeId,
+      sortBy,
+      sortOrder,
+      page,
+      limit,
+    } = parsed.data;
 
-    if (user.role === 'SUPERVISOR') {
-      // Supervisors can see the entire queue
-      tickets = await prisma.ticket.findMany({
-        where: { isArchived },
-        orderBy: { createdAt: 'desc' },
-        include: {
-          primaryAssignee: { select: { id: true, name: true, email: true } },
-          collaborators: {
-            include: {
-              user: { select: { id: true, name: true, email: true } }
-            }
-          },
-        }
-      });
-    } else {
-      // Agents can only act on tickets where they are the primary assignee or a collaborator
-      tickets = await prisma.ticket.findMany({
-        where: {
-          isArchived,
-          OR: [
-            { primaryAssigneeId: user.userId },
-            { collaborators: { some: { userId: user.userId } } }
-          ]
-        },
-        orderBy: { createdAt: 'desc' },
-        include: {
-          primaryAssignee: { select: { id: true, name: true, email: true } },
-          collaborators: {
-            include: {
-              user: { select: { id: true, name: true, email: true } }
-            }
-          },
-        }
+    // Build the query securely
+    // We use an AND array to combine base security constraints with user filters,
+    // ensuring that multiple OR clauses don't silently overwrite each other.
+    const andConditions: any[] = [];
+
+    // Base filters
+    andConditions.push({ isArchived: isArchived ?? false });
+
+    // Agent security filter
+    if (user.role === 'AGENT') {
+      andConditions.push({
+        OR: [
+          { primaryAssigneeId: user.userId },
+          { collaborators: { some: { userId: user.userId } } }
+        ]
       });
     }
 
-    res.json(tickets);
+    // User-provided filters
+    if (search) {
+      andConditions.push({
+        OR: [
+          { subject: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ]
+      });
+    }
+
+    if (status) andConditions.push({ status });
+    if (priority) andConditions.push({ priority });
+    if (category) andConditions.push({ category }); // Exact match
+    if (assigneeId) andConditions.push({ primaryAssigneeId: assigneeId });
+
+    const where = { AND: andConditions };
+    const orderBy = { [sortBy]: sortOrder };
+
+    const skip = (page - 1) * limit;
+
+    // Run count and query in parallel
+    const [total, data] = await prisma.$transaction([
+      prisma.ticket.count({ where }),
+      prisma.ticket.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+        include: {
+          primaryAssignee: { select: { id: true, name: true, email: true } },
+          collaborators: {
+            include: {
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
+        }
+      })
+    ]);
+
+    res.json({
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });

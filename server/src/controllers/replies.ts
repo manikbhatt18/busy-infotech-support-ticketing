@@ -3,16 +3,12 @@ import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { Role, Ticket, TicketCollaborator } from '@prisma/client';
-
-type TicketWithCollaborators = Ticket & { collaborators: TicketCollaborator[] };
-type JwtPayload = { userId: string; role: Role };
-
-const canAgentActOnTicket = (user: JwtPayload, ticket: TicketWithCollaborators): boolean => {
-  if (user.role === 'SUPERVISOR') return true;
-  const isAssignee = ticket.primaryAssigneeId === user.userId;
-  const isCollaborator = ticket.collaborators?.some((c) => c.userId === user.userId);
-  return isAssignee || isCollaborator;
-};
+import {
+  canAgentActOnTicket,
+  computeSlaTargetAt,
+  TicketWithCollaborators,
+  JwtPayload,
+} from './tickets';
 
 // --- GET /tickets/:id/replies ---
 export const getReplies = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -92,18 +88,25 @@ export const createReply = async (req: AuthRequest, res: Response): Promise<void
 
     const data = createReplySchema.parse(req.body);
 
-    // Goal 4 integration point explicitly deferred:
-    // createReply does NOT touch ticket.status or pendingEnteredAt.
-    // The Pending->Open transition on customer reply is fully deferred to Goal 4.
+    // Goal 4 integration: the PENDING → OPEN auto-transition (if applicable), its SLA clock
+    // resume math, and the STATUS_CHANGED audit entry all happen inside the SAME $transaction
+    // as the reply creation. A crash anywhere rolls back everything — no reply saved with the
+    // ticket stuck in PENDING.
+    const shouldAutoTransition =
+      data.authorType === 'CUSTOMER' && ticket.status === 'PENDING';
+
+    const now = new Date();
 
     const newReply = await prisma.$transaction(async (tx) => {
+      // 1. Create the Reply
       const reply = await tx.reply.create({
         data: {
           ticketId,
           body: data.body,
           isInternal: data.isInternal,
           authorType: data.authorType,
-          // Explicit authorId assignment rules:
+          // Decision 9/10: for AGENT replies force authorId = submitting user.
+          // For CUSTOMER replies explicitly set null — never undefined.
           authorId: data.authorType === 'AGENT' ? user.userId : null,
         },
         include: {
@@ -111,14 +114,46 @@ export const createReply = async (req: AuthRequest, res: Response): Promise<void
         },
       });
 
+      // 2. REPLY_ADDED audit entry (actorId = always the submitting agent, per Decision 10)
       await tx.auditTimeline.create({
         data: {
           ticketId,
-          actorId: user.userId, // AuditTimeline.actorId is ALWAYS the submitting agent
+          actorId: user.userId,
           eventType: 'REPLY_ADDED',
           replyId: reply.id,
         },
       });
+
+      // 3. Goal 4: PENDING → OPEN auto-transition on customer reply.
+      // SLA clock resume: push slaTargetAt forward by exactly the time spent in PENDING.
+      if (shouldAutoTransition) {
+        const pauseMs = ticket.pendingEnteredAt
+          ? now.getTime() - ticket.pendingEnteredAt.getTime()
+          : 0;
+        const newSlaTargetAt = ticket.slaTargetAt
+          ? new Date(ticket.slaTargetAt.getTime() + pauseMs)
+          : computeSlaTargetAt(ticket.priority);
+
+        await tx.ticket.update({
+          where: { id: ticketId },
+          data: {
+            status: 'OPEN',
+            pendingEnteredAt: null,
+            slaTargetAt: newSlaTargetAt,
+          },
+        });
+
+        // 4. STATUS_CHANGED audit entry — inside the same transaction
+        await tx.auditTimeline.create({
+          data: {
+            ticketId,
+            actorId: user.userId, // AuditTimeline.actorId = who submitted the action, per Decision 10
+            eventType: 'STATUS_CHANGED',
+            oldStatus: 'PENDING',
+            newStatus: 'OPEN',
+          },
+        });
+      }
 
       return reply;
     });

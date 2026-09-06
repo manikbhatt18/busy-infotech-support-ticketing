@@ -5,7 +5,8 @@ import {
   createTicket,
   updateTicketDetails,
   archiveTicket,
-  restoreTicket
+  restoreTicket,
+  updateTicketStatus,
 } from '../controllers/tickets';
 import { authenticateToken } from '../middleware/auth';
 
@@ -28,5 +29,9 @@ router.patch('/:id/restore', restoreTicket);
 
 // --- Goal 3 Routes ---
 router.use('/:id/replies', repliesRoutes);
+
+// --- Goal 4 Routes ---
+// Status transitions — must come AFTER /archive and /restore to avoid route conflicts
+router.patch('/:id/status', updateTicketStatus);
 
 export default router;

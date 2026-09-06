@@ -145,3 +145,24 @@ When priority changes AND `ticket.status === 'PENDING'`, BOTH fields must reset 
 - **Chose:** To deliberately exclude a "My Tickets" view/toggle for Supervisors from the Goal 5 scope.
 - **Rejected:** Building the frontend toggle for supervisors.
 - **Why:** The spec requires: *"Every agent can see one list of every ticket where they are the primary assignee or a collaborator."* Agents already get this exact behavior automatically via Goal 1's `OR`-filter (which restricts them to only their assigned/collaborating tickets). A supervisor toggle to filter their view down to their *own* assignments is a UX convenience, not a Goal 5 requirement. Building it now would consume time on a non-required feature while Goals 6-10 remain unimplemented.
+
+## Decision 18: Query Construction and Security (Goal 6)
+
+- **Chose:** Used Prisma's `AND` operator to strictly isolate the role-based security filter from user-provided search filters.
+- **Rejected:** Combining user search terms and the agent security restriction using multiple top-level `OR` clauses in a single object spread.
+- **Why (Reversed/Corrected):** My initial draft used a single spread object for the `where` clause. When an agent used the search filter (which uses an `OR` condition across subject and description), it completely overwrote the security `OR` condition that restricts agents to their own tickets. This would have caused a massive privilege escalation bug where any agent could search the entire system's tickets. Wrapping both `OR` conditions in an `AND` array forces Prisma to apply them compositively.
+
+## Decision 19: Category Filtering Exact Match (Goal 6)
+
+- **Chose:** The category filter requires an exact string match rather than a partial (`contains`) match.
+- **Why:** The spec does not explicitly mandate how the category filter should behave. However, since categories are effectively enumerated labels (e.g., "Billing", "Bug"), a partial match creates false positives. Searching for "Bill" shouldn't return "Billing Errors" unless explicitly asked for. It's safer and more expected for category dropdowns/inputs to use exact equality.
+
+## Decision 20: Assignee Filter (Goal 6)
+
+- **Chose:** The `assigneeId` filter only checks against `primaryAssigneeId` and ignores the `collaborators` relation.
+- **Why:** The spec treats the concepts of "assignee" and "collaborator" as distinct. Filtering for "Assignee = Agent X" implies looking for tickets where Agent X is the primary owner, not tickets where they happen to be observing/collaborating.
+
+## Decision 21: Priority Sorting Native Execution (Goal 6)
+
+- **Chose:** We sort by `priority` using Prisma's standard `orderBy: { priority: 'desc' }`.
+- **Why:** `TicketPriority` is defined as a PostgreSQL `enum` (`LOW`, `MEDIUM`, `HIGH`, `URGENT`). PostgreSQL natively understands that enum values are ordered based on the sequence they were declared in the schema, not alphabetically. This means `desc` perfectly sorts `URGENT` at the top without needing a raw SQL `CASE` mapping.

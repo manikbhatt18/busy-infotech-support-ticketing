@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,7 @@ import TicketModal, { TicketFormData } from "@/components/TicketModal";
 import TicketDetailsModal from "@/components/TicketDetailsModal";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import BulkResultsModal, { BulkResult } from "@/components/BulkResultsModal";
+import SlaAlertsPanel from "@/components/SlaAlertsPanel";
 
 export default function Dashboard() {
   const { user, logout, loading } = useAuth();
@@ -18,9 +19,12 @@ export default function Dashboard() {
   const [error, setError] = useState("");
 
   // Top-level view: supervisors default to analytics, agents to ticket queue (Decision 24)
-  const [activeView, setActiveView] = useState<'queue' | 'analytics'>(
+  const [activeView, setActiveView] = useState<'queue' | 'analytics' | 'alerts'>(
     user?.role === 'SUPERVISOR' ? 'analytics' : 'queue'
   );
+
+  // SLA Alert count badge (Goal 10) — polled every 30s
+  const [slaAlertCount, setSlaAlertCount] = useState(0);
   
   // Base view
   const [isArchivedView, setIsArchivedView] = useState(false);
@@ -110,6 +114,21 @@ export default function Dashboard() {
   useEffect(() => {
     fetchUsers();
   }, [user]);
+
+  // Goal 10: Poll SLA alert count every 30 seconds
+  const fetchAlertCount = useCallback(() => {
+    if (user) {
+      apiFetch('/sla-alerts/count')
+        .then((res) => setSlaAlertCount(res.count || 0))
+        .catch(() => {}); // silent fail for badge polling
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchAlertCount();
+    const interval = setInterval(fetchAlertCount, 30000);
+    return () => clearInterval(interval);
+  }, [fetchAlertCount]);
 
   if (loading || !user) {
     return <div className="p-8 text-center">Loading...</div>;
@@ -280,7 +299,7 @@ export default function Dashboard() {
           </button>
         </header>
 
-        {/* Top-level view toggle: Analytics vs Ticket Queue */}
+        {/* Top-level view toggle: Analytics vs Ticket Queue vs SLA Alerts */}
         <div className="flex gap-2">
           <button
             onClick={() => setActiveView('analytics')}
@@ -302,6 +321,21 @@ export default function Dashboard() {
           >
             📋 Ticket Queue
           </button>
+          <button
+            onClick={() => { setActiveView('alerts'); fetchAlertCount(); }}
+            className={`rounded-md px-4 py-2 text-sm font-medium relative ${
+              activeView === 'alerts'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            🚨 SLA Alerts
+            {slaAlertCount > 0 && (
+              <span className="absolute -top-2 -right-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-xs font-bold">
+                {slaAlertCount > 99 ? '99+' : slaAlertCount}
+              </span>
+            )}
+          </button>
         </div>
 
         {error && (
@@ -313,6 +347,17 @@ export default function Dashboard() {
         {/* Render the active view */}
         {activeView === 'analytics' ? (
           <AnalyticsDashboard />
+        ) : activeView === 'alerts' ? (
+          <SlaAlertsPanel
+            onTicketClick={async (ticketId) => {
+              try {
+                const ticket = await apiFetch(`/tickets?search=${ticketId}&limit=1`);
+                const found = ticket.data?.find((t: any) => t.id === ticketId);
+                if (found) setDetailsModalTicket(found);
+              } catch {}
+            }}
+            onAlertAcknowledged={() => setSlaAlertCount((c) => Math.max(0, c - 1))}
+          />
         ) : (
         <>
 

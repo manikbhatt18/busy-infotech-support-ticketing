@@ -202,3 +202,21 @@ When priority changes AND `ticket.status === 'PENDING'`, BOTH fields must reset 
 - **Chose:** When an Agent views the Analytics Dashboard, all metrics are scoped to tickets where they are the primary assignee or a collaborator. Supervisors see system-wide metrics.
 - **Rejected:** Showing agents global company-wide stats.
 - **Why:** Agents can only act on their own tickets (Goal 1). Showing them global stats for tickets they have no access to would be confusing and could leak information about other agents' workloads. Scoping to their own tickets keeps the analytics consistent with what they see in the queue.
+
+## Decision 28: Near-Breach Threshold (Goal 10)
+
+- **Chose:** 30 minutes before `slaTargetAt` as the near-breach window.
+- **Rejected:** Using a percentage of the total SLA window (e.g. 10%), or a longer fixed window (e.g. 1 hour).
+- **Why:** The `TicketDetailsModal` already uses 30 minutes as the `urgentThresholdMs` to turn the SLA indicator orange. Using the same value for the alerts panel keeps the UX consistent — a ticket shows as "orange/urgent" in the detail view at the exact same moment it enters the alerts list.
+
+## Decision 29: Acknowledgment Tied to Breach Instance (Goal 10)
+
+- **Chose:** The `SlaAcknowledgment.breachTime` field stores the ticket's current `slaTargetAt` at the moment of acknowledgment, tying the ack to a specific breach instance.
+- **Rejected:** Acknowledging just by `(ticketId, agentId)` — which would permanently suppress the alert even after a reopen.
+- **Why:** The spec explicitly says "If the ticket is later reopened and breaches its target response time again, the alert returns." On reopen, `updateTicketStatus` computes a fresh `slaTargetAt`. The old `SlaAcknowledgment` with the old `breachTime` no longer matches the new `slaTargetAt`, so the alert re-surfaces with zero extra logic. The `@@unique([ticketId, agentId, breachTime])` constraint in the schema was designed for exactly this pattern.
+
+## Decision 30: PENDING Tickets Excluded from Alerts (Goal 10)
+
+- **Chose:** Tickets in PENDING status are excluded from SLA alerts, even if their frozen `slaTargetAt` is in the past.
+- **Rejected:** Alerting on all tickets where `slaTargetAt < NOW`, regardless of status.
+- **Why:** Goal 4 explicitly pauses the SLA clock when a ticket enters PENDING. A PENDING ticket's `slaTargetAt` is frozen at its pre-pause value; it doesn't represent a real breach. Alerting on it would be a false positive. This is consistent with Goal 8's breaching-ticket count, which also uses `status: { notIn: ['RESOLVED', 'CLOSED', 'PENDING'] }`.

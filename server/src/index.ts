@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import ticketRoutes from './routes/tickets';
 import analyticsRoutes from './routes/analytics';
+import slaAlertRoutes from './routes/sla-alerts';
 
 dotenv.config();
 
@@ -16,6 +17,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/sla-alerts', slaAlertRoutes);
+
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });

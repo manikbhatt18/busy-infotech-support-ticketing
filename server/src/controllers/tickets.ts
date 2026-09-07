@@ -127,8 +127,9 @@ export const getTickets = async (req: AuthRequest, res: Response): Promise<void>
 
     const skip = (page - 1) * limit;
 
-    // Run count and query in parallel
-    const [total, data] = await prisma.$transaction([
+    // Run count and query in parallel (Promise.all instead of $transaction to
+    // reduce connection pool pressure on Supabase free-tier limits)
+    const [total, data] = await Promise.all([
       prisma.ticket.count({ where }),
       prisma.ticket.findMany({
         where,

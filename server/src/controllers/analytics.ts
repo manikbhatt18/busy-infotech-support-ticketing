@@ -29,7 +29,8 @@ export const getAnalytics = async (req: AuthRequest, res: Response): Promise<voi
     // 8 weeks ago for chart data
     const eightWeeksAgo = new Date(now.getTime() - 8 * 7 * 24 * 60 * 60 * 1000);
 
-    // Run all queries in parallel via $transaction for consistency
+    // Run all queries in parallel (Promise.all instead of $transaction to
+    // reduce connection pool pressure on Supabase free-tier limits)
     const [
       openCount,
       pendingCount,
@@ -38,7 +39,7 @@ export const getAnalytics = async (req: AuthRequest, res: Response): Promise<voi
       statusBreakdown,
       agentBreakdownRaw,
       resolvedLast8Weeks,
-    ] = await prisma.$transaction([
+    ] = await Promise.all([
       // Headline 1: Open tickets
       prisma.ticket.count({
         where: { ...baseWhere, status: 'OPEN', isArchived: false },

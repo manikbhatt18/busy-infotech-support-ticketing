@@ -15,8 +15,8 @@ The database is hosted on the Supabase free tier. If the project has been inacti
 
 | Role | Email | Password |
 |------|-------|----------|
-| Agent | agent@example.com | password123 |
-| Supervisor | supervisor@example.com | password123 |
+| Agent | agent1@test.com | agent1 |
+| Supervisor | bhattmanik94@gmail.com | manikbhatt |
 
 ## Stack
 

@@ -612,6 +612,268 @@ export const updateTicketStatus = async (req: AuthRequest, res: Response): Promi
   }
 };
 
+// --- GET /export (Goal 7) ---
+export const exportTicketsCsv = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const parsed = getTicketsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid query parameters', details: parsed.error.issues });
+      return;
+    }
+
+    const { isArchived, search, status, priority, category, assigneeId, sortBy, sortOrder } = parsed.data;
+
+    const andConditions: any[] = [];
+    andConditions.push({ isArchived: isArchived ?? false });
+
+    if (user.role === 'AGENT') {
+      andConditions.push({
+        OR: [
+          { primaryAssigneeId: user.userId },
+          { collaborators: { some: { userId: user.userId } } }
+        ]
+      });
+    }
+
+    if (search) {
+      andConditions.push({
+        OR: [
+          { subject: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ]
+      });
+    }
+
+    if (status) andConditions.push({ status });
+    if (priority) andConditions.push({ priority });
+    if (category) andConditions.push({ category });
+    if (assigneeId) andConditions.push({ primaryAssigneeId: assigneeId });
+
+    const where = { AND: andConditions };
+    const orderBy = { [sortBy]: sortOrder };
+
+    const data = await prisma.ticket.findMany({
+      where,
+      orderBy,
+      include: {
+        primaryAssignee: { select: { id: true, name: true, email: true } },
+      }
+    });
+
+    const escapeCsv = (str: string | null | undefined) => {
+      if (!str) return '';
+      const s = String(str);
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+
+    const lines = [];
+    lines.push('ID,Subject,Status,Priority,Category,Assignee Name,Assignee Email,Created At');
+    for (const t of data) {
+      lines.push([
+        escapeCsv(t.id),
+        escapeCsv(t.subject),
+        escapeCsv(t.status),
+        escapeCsv(t.priority),
+        escapeCsv(t.category),
+        escapeCsv(t.primaryAssignee?.name),
+        escapeCsv(t.primaryAssignee?.email),
+        escapeCsv(t.createdAt.toISOString()),
+      ].join(','));
+    }
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('tickets.csv');
+    res.send(lines.join('\n'));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// --- POST /bulk/close (Goal 7) ---
+const bulkCloseSchema = z.object({
+  ticketIds: z.array(z.string()),
+});
+
+export const bulkCloseTickets = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { ticketIds } = bulkCloseSchema.parse(req.body);
+    const results: Array<{ ticketId: string; success: boolean; reason?: string }> = [];
+
+    const now = new Date();
+
+    for (const ticketId of ticketIds) {
+      try {
+        const existingTicket = await prisma.ticket.findUnique({
+          where: { id: ticketId },
+          include: { collaborators: true },
+        });
+
+        if (!existingTicket) {
+          results.push({ ticketId, success: false, reason: 'Ticket not found' });
+          continue;
+        }
+
+        if (!canAgentActOnTicket(user, existingTicket)) {
+          results.push({ ticketId, success: false, reason: 'You do not have permission to act on this ticket' });
+          continue;
+        }
+
+        if (existingTicket.status === 'CLOSED') {
+          results.push({ ticketId, success: false, reason: `Ticket is already in status CLOSED. No transition was made.` });
+          continue;
+        }
+
+        const legalNextStates = ALLOWED_TRANSITIONS[existingTicket.status];
+        if (!legalNextStates.includes('CLOSED')) {
+          results.push({ ticketId, success: false, reason: `Cannot transition from ${existingTicket.status} to CLOSED. Allowed next states: ${legalNextStates.join(', ') || 'none'}.` });
+          continue;
+        }
+
+        if (user.role === 'AGENT') {
+          results.push({ ticketId, success: false, reason: 'Only supervisors can close tickets.' });
+          continue;
+        }
+
+        await prisma.$transaction(async (tx) => {
+          await tx.ticket.update({
+            where: { id: ticketId },
+            data: { status: 'CLOSED', closedAt: now },
+          });
+
+          await tx.auditTimeline.create({
+            data: {
+              ticketId,
+              actorId: user.userId,
+              eventType: 'STATUS_CHANGED',
+              oldStatus: existingTicket.status,
+              newStatus: 'CLOSED',
+            },
+          });
+        });
+
+        results.push({ ticketId, success: true });
+      } catch (err: any) {
+        results.push({ ticketId, success: false, reason: err.message || 'Internal error' });
+      }
+    }
+
+    res.json({ results });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.issues });
+    } else {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+};
+
+// --- POST /bulk/reassign (Goal 7) ---
+const bulkReassignSchema = z.object({
+  ticketIds: z.array(z.string()),
+  primaryAssigneeId: z.string().nullable().optional(),
+});
+
+export const bulkReassignTickets = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { ticketIds, primaryAssigneeId } = bulkReassignSchema.parse(req.body);
+
+    if (primaryAssigneeId) {
+      const targetUser = await prisma.user.findUnique({
+        where: { id: primaryAssigneeId },
+      });
+      if (!targetUser || targetUser.role !== 'AGENT') {
+        res.status(400).json({ error: 'Target assignee must be an existing AGENT.' });
+        return;
+      }
+    }
+
+    const results: Array<{ ticketId: string; success: boolean; reason?: string }> = [];
+
+    for (const ticketId of ticketIds) {
+      try {
+        const existingTicket = await prisma.ticket.findUnique({
+          where: { id: ticketId },
+          include: { collaborators: true },
+        });
+
+        if (!existingTicket) {
+          results.push({ ticketId, success: false, reason: 'Ticket not found' });
+          continue;
+        }
+
+        if (!canAgentActOnTicket(user, existingTicket)) {
+          results.push({ ticketId, success: false, reason: 'You do not have permission to act on this ticket' });
+          continue;
+        }
+
+        if (user.role === 'AGENT' && primaryAssigneeId !== undefined && primaryAssigneeId !== user.userId) {
+          results.push({ ticketId, success: false, reason: 'Agents cannot reassign a ticket away from themselves' });
+          continue;
+        }
+
+        const oldAssigneeId = existingTicket.primaryAssigneeId;
+        const newAssigneeId = primaryAssigneeId !== undefined ? primaryAssigneeId : oldAssigneeId;
+        const isReassignment = oldAssigneeId !== newAssigneeId;
+
+        await prisma.$transaction(async (tx) => {
+          await tx.ticket.update({
+            where: { id: ticketId },
+            data: {
+              ...(primaryAssigneeId !== undefined && { primaryAssigneeId }),
+            },
+          });
+
+          if (isReassignment) {
+            await tx.auditTimeline.create({
+              data: {
+                ticketId,
+                actorId: user.userId,
+                eventType: 'REASSIGNED',
+                oldAssigneeId,
+                newAssigneeId,
+              },
+            });
+          }
+        });
+
+        results.push({ ticketId, success: true });
+      } catch (err: any) {
+        results.push({ ticketId, success: false, reason: err.message || 'Internal error' });
+      }
+    }
+
+    res.json({ results });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.issues });
+    } else {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+};
+
 // Export shared helpers and constants for use in replies controller (Goal 4 integration)
 export { ALLOWED_TRANSITIONS, SLA_HOURS, REOPEN_WINDOW_MS, computeSlaTargetAt, canAgentActOnTicket };
 export type { TicketWithCollaborators, JwtPayload };

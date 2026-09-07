@@ -7,6 +7,9 @@ import {
   archiveTicket,
   restoreTicket,
   updateTicketStatus,
+  exportTicketsCsv,
+  bulkCloseTickets,
+  bulkReassignTickets,
 } from '../controllers/tickets';
 import { addCollaborator, removeCollaborator } from '../controllers/collaborators';
 import { authenticateToken } from '../middleware/auth';
@@ -17,6 +20,11 @@ const router = Router();
 
 // All ticket routes require authentication
 router.use(authenticateToken);
+
+// --- Goal 7 Routes (Must be before /:id) ---
+router.get('/export', exportTicketsCsv);
+router.post('/bulk/close', bulkCloseTickets);
+router.post('/bulk/reassign', bulkReassignTickets);
 
 // --- Goal 1 Routes ---
 router.get('/', getTickets);

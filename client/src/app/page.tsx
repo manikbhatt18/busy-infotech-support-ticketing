@@ -6,6 +6,8 @@ import { apiFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import TicketModal, { TicketFormData } from "@/components/TicketModal";
 import TicketDetailsModal from "@/components/TicketDetailsModal";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
+import BulkResultsModal, { BulkResult } from "@/components/BulkResultsModal";
 
 export default function Dashboard() {
   const { user, logout, loading } = useAuth();
@@ -14,6 +16,11 @@ export default function Dashboard() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [error, setError] = useState("");
+
+  // Top-level view: supervisors default to analytics, agents to ticket queue (Decision 24)
+  const [activeView, setActiveView] = useState<'queue' | 'analytics'>(
+    user?.role === 'SUPERVISOR' ? 'analytics' : 'queue'
+  );
   
   // Base view
   const [isArchivedView, setIsArchivedView] = useState(false);
@@ -38,6 +45,12 @@ export default function Dashboard() {
   const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE");
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [detailsModalTicket, setDetailsModalTicket] = useState<any | null>(null);
+
+  // Bulk Action States
+  const [selectedTicketIds, setSelectedTicketIds] = useState<string[]>([]);
+  const [isBulkResultsOpen, setIsBulkResultsOpen] = useState(false);
+  const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
+  const [bulkAssigneeId, setBulkAssigneeId] = useState("");
 
   // Debounce search input automatically
   useEffect(() => {
@@ -91,6 +104,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchTickets();
+    setSelectedTicketIds([]);
   }, [user, isArchivedView, search, status, priority, category, assigneeId, sortBy, sortOrder, page]);
 
   useEffect(() => {
@@ -168,12 +182,92 @@ export default function Dashboard() {
     setPage(1);
   };
 
+  const handleExportCsv = async () => {
+    const params = new URLSearchParams();
+    params.append('isArchived', String(isArchivedView));
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    if (priority) params.append('priority', priority);
+    if (category) params.append('category', category);
+    if (assigneeId) params.append('assigneeId', assigneeId);
+    if (sortBy) params.append('sortBy', sortBy);
+    if (sortOrder) params.append('sortOrder', sortOrder);
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      const response = await fetch(`${API_URL}/tickets/export?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (!response.ok) throw new Error("Failed to export");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tickets_export_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Error exporting CSV");
+    }
+  };
+
+  const handleBulkClose = async () => {
+    if (!confirm(`Are you sure you want to close ${selectedTicketIds.length} tickets?`)) return;
+    try {
+      const res = await apiFetch('/tickets/bulk/close', {
+        method: 'POST',
+        body: JSON.stringify({ ticketIds: selectedTicketIds })
+      });
+      setBulkResults(res.results || []);
+      setIsBulkResultsOpen(true);
+      setSelectedTicketIds([]);
+    } catch (err: any) {
+      alert(err.message || "Failed to execute bulk close");
+    }
+  };
+
+  const handleBulkReassign = async () => {
+    try {
+      const res = await apiFetch('/tickets/bulk/reassign', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          ticketIds: selectedTicketIds, 
+          primaryAssigneeId: bulkAssigneeId || null 
+        })
+      });
+      setBulkResults(res.results || []);
+      setIsBulkResultsOpen(true);
+      setSelectedTicketIds([]);
+      setBulkAssigneeId("");
+    } catch (err: any) {
+      alert(err.message || "Failed to execute bulk reassign");
+    }
+  };
+
+  const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedTicketIds(tickets.map(t => t.id));
+    } else {
+      setSelectedTicketIds([]);
+    }
+  };
+
+  const toggleSelectTicket = (id: string) => {
+    setSelectedTicketIds(prev => 
+      prev.includes(id) ? prev.filter(tId => tId !== id) : [...prev, id]
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex items-center justify-between rounded-lg bg-white p-6 shadow">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Support Center</h1>
             <p className="text-sm text-gray-500">
               Logged in as {user.name} ({user.email}) - <span className="font-semibold text-blue-600">{user.role}</span>
             </p>
@@ -186,11 +280,41 @@ export default function Dashboard() {
           </button>
         </header>
 
+        {/* Top-level view toggle: Analytics vs Ticket Queue */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveView('analytics')}
+            className={`rounded-md px-4 py-2 text-sm font-medium ${
+              activeView === 'analytics'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            📊 Analytics
+          </button>
+          <button
+            onClick={() => setActiveView('queue')}
+            className={`rounded-md px-4 py-2 text-sm font-medium ${
+              activeView === 'queue'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            📋 Ticket Queue
+          </button>
+        </div>
+
         {error && (
           <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
+
+        {/* Render the active view */}
+        {activeView === 'analytics' ? (
+          <AnalyticsDashboard />
+        ) : (
+        <>
 
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
@@ -219,9 +343,14 @@ export default function Dashboard() {
         <div className="rounded-lg bg-white shadow p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-700">Find Tickets</h3>
-            <button onClick={clearFilters} className="text-sm text-blue-600 hover:underline">
-              Clear Filters
-            </button>
+            <div className="flex gap-4">
+              <button onClick={handleExportCsv} className="text-sm text-green-600 hover:underline">
+                ↓ Export CSV
+              </button>
+              <button onClick={clearFilters} className="text-sm text-blue-600 hover:underline">
+                Clear Filters
+              </button>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -300,12 +429,57 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Bulk Actions Toolbar */}
+        {selectedTicketIds.length > 0 && (
+          <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 flex items-center justify-between">
+            <span className="text-sm font-medium text-indigo-800">
+              {selectedTicketIds.length} ticket(s) selected
+            </span>
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2">
+                <select
+                  value={bulkAssigneeId}
+                  onChange={(e) => setBulkAssigneeId(e.target.value)}
+                  className="rounded border border-indigo-300 px-3 py-1.5 text-sm text-black"
+                >
+                  <option value="">Select Assignee...</option>
+                  {users.filter(u => u.role === 'AGENT').map(u => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleBulkReassign}
+                  disabled={!bulkAssigneeId}
+                  className="rounded bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  Reassign
+                </button>
+              </div>
+              <button
+                onClick={handleBulkClose}
+                className="rounded bg-red-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+              >
+                Close Selected
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Ticket List */}
         <div className="rounded-lg bg-white shadow">
           <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-            <h2 className="text-lg font-medium text-gray-900">
-              {isArchivedView ? 'Archived Tickets' : (user.role === 'SUPERVISOR' ? 'All Active Tickets' : 'My Active Tickets')}
-            </h2>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                checked={tickets.length > 0 && selectedTicketIds.length === tickets.length}
+                onChange={toggleSelectAll}
+                title="Select all on page"
+              />
+              <h2 className="text-lg font-medium text-gray-900">
+                {isArchivedView ? 'Archived Tickets' : (user.role === 'SUPERVISOR' ? 'All Active Tickets' : 'My Active Tickets')}
+              </h2>
+            </div>
             <span className="text-sm text-gray-500">
               Showing {tickets.length} of {totalTickets}
             </span>
@@ -316,8 +490,16 @@ export default function Dashboard() {
               <li className="px-6 py-8 text-center text-gray-500">No tickets found matching your filters.</li>
             ) : (
               tickets.map((ticket) => (
-                <li key={ticket.id} className="px-6 py-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
+                <li key={ticket.id} className="px-6 py-4 hover:bg-gray-50 flex items-center">
+                  <div className="mr-4">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      checked={selectedTicketIds.includes(ticket.id)}
+                      onChange={() => toggleSelectTicket(ticket.id)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between flex-1">
                     <div 
                       className="cursor-pointer flex-1 mr-4"
                       onClick={() => setDetailsModalTicket(ticket)}
@@ -401,7 +583,6 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </div>
 
       <TicketModal
         isOpen={isModalOpen}
@@ -419,7 +600,6 @@ export default function Dashboard() {
         users={users}
         isSupervisor={user.role === 'SUPERVISOR'}
       />
-
       <TicketDetailsModal
         isOpen={!!detailsModalTicket}
         onClose={() => setDetailsModalTicket(null)}
@@ -433,6 +613,15 @@ export default function Dashboard() {
           setDetailsModalTicket(updatedTicket);
         }}
       />
+
+      <BulkResultsModal
+        isOpen={isBulkResultsOpen}
+        onClose={() => setIsBulkResultsOpen(false)}
+        results={bulkResults}
+      />
+      </>
+        )}
+      </div>
     </div>
   );
 }

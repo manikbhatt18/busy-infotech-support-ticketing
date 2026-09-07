@@ -166,3 +166,39 @@ When priority changes AND `ticket.status === 'PENDING'`, BOTH fields must reset 
 
 - **Chose:** We sort by `priority` using Prisma's standard `orderBy: { priority: 'desc' }`.
 - **Why:** `TicketPriority` is defined as a PostgreSQL `enum` (`LOW`, `MEDIUM`, `HIGH`, `URGENT`). PostgreSQL natively understands that enum values are ordered based on the sequence they were declared in the schema, not alphabetically. This means `desc` perfectly sorts `URGENT` at the top without needing a raw SQL `CASE` mapping.
+
+## Decision 26: Partial Bulk Action Failure Handling (Goal 7)
+
+- **Chose:** Return `200 OK` with an array of per-ticket execution results `{ ticketId, success, reason }` instead of failing the entire HTTP transaction when one ticket fails.
+- **Why:** In bulk operations, some tickets may succeed (e.g. valid transition, user has permission) while others fail (e.g. ticket already CLOSED, permission denied). Rolling back the entire bulk operation or aborting halfway creates poor UX and prevents partial progress. Returning per-ticket status allows the UI to display a detailed modal summarizing exact successes and failure reasons for each ticket.
+
+## Decision 27: CSV Export Streaming and Role Security (Goal 7)
+
+- **Chose:** `GET /tickets/export` generates CSV formatted output using the exact same `where` security filtering, search, and sorting logic as `GET /tickets`.
+- **Why:** Ensures exported CSV data strictly adheres to agent scope rules (agents only export tickets assigned to or collaborated on by them) and respects active search/filter options.
+
+
+## Decision 22: Weekly Resolution Chart Data Source (Goal 8) — Later reversed
+
+- **Chose (originally):** Use `$queryRaw` with `date_trunc('week', "resolvedAt")` for the 8-week aggregation, since Prisma's `groupBy` doesn't support date-truncation expressions.
+- **Reversed to:** Fetch resolved tickets via a standard Prisma query (`resolvedAt >= 8 weeks ago`), bucket into 8 trailing 7-day windows in JavaScript.
+- **Why reversed:** Simpler code, avoids raw SQL for a single feature, and at this dataset's scale the performance difference is negligible. Uses trailing 7-day windows counted back from `now`, not calendar weeks, to avoid timezone and partial-week edge cases.
+- **What breaks at 100× data:** This approach loads every ticket resolved in the last 8 weeks into memory to bucket manually — at high volume, that's real memory/transfer overhead a database-side `GROUP BY` wouldn't have. The original `$queryRaw` approach would be the correct fix at production scale.
+
+## Decision 23: "Resolved This Week" Definition (Goal 8)
+
+- **Chose:** "Resolved this week" means tickets where `resolvedAt >= NOW - 7 days` (trailing 7-day window from the current moment).
+- **Rejected:** Calendar-week definition (Monday 00:00 to Sunday 23:59).
+- **Why:** The spec says "resolved this week" without specifying calendar vs. trailing. A trailing window is timezone-agnostic, requires no locale configuration, and gives a consistent 7-day view regardless of when during the week the dashboard is viewed. A calendar-week definition would show near-zero results every Monday morning, which is misleading.
+
+## Decision 24: Default Landing View Per Role (Goal 8)
+
+- **Chose:** Supervisors default to the Analytics Dashboard view; Agents default to the Ticket Queue view.
+- **Rejected:** Same default for both roles.
+- **Why:** The spec says "a landing view shows headline numbers". Supervisors' primary daily task is oversight — headline metrics, SLA compliance, team workload distribution — so the analytics view is their natural starting point. Agents' primary task is working tickets — replying, transitioning, collaborating — so the queue is theirs. Both roles can toggle between views freely.
+
+## Decision 25: Agent Analytics Scope (Goal 8)
+
+- **Chose:** When an Agent views the Analytics Dashboard, all metrics are scoped to tickets where they are the primary assignee or a collaborator. Supervisors see system-wide metrics.
+- **Rejected:** Showing agents global company-wide stats.
+- **Why:** Agents can only act on their own tickets (Goal 1). Showing them global stats for tickets they have no access to would be confusing and could leak information about other agents' workloads. Scoping to their own tickets keeps the analytics consistent with what they see in the queue.

@@ -10,6 +10,22 @@ import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import BulkResultsModal, { BulkResult } from "@/components/BulkResultsModal";
 import SlaAlertsPanel from "@/components/SlaAlertsPanel";
 import Loader from "@/components/Loader";
+import { 
+  BarChart3, 
+  ListTodo, 
+  AlertCircle, 
+  Plus, 
+  Search, 
+  Download, 
+  FilterX, 
+  Inbox, 
+  Clock, 
+  CheckCircle2, 
+  Archive,
+  LogOut,
+  User,
+  Tag
+} from "lucide-react";
 
 export default function Dashboard() {
   const { user, logout, loading } = useAuth();
@@ -288,50 +304,52 @@ export default function Dashboard() {
         {/* Header section */}
         <header className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard</h1>
-            <p className="text-sm text-gray-500 mt-1">Welcome back, {user.name} ({user.role})</p>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+            <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
+              <User className="w-4 h-4" /> Welcome back, <span className="font-medium text-gray-900">{user.name}</span> ({user.role})
+            </p>
           </div>
           <button
             onClick={logout}
-            className="rounded-md border border-red-300 bg-white/70 backdrop-blur-sm px-4 py-2 text-sm font-medium text-red-600 shadow-sm hover:bg-red-50 cursor-pointer transition-all duration-200 active:scale-95"
+            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 hover:text-gray-900 transition-colors"
           >
-            Log out
+            <LogOut className="w-4 h-4" /> Log out
           </button>
         </header>
 
-        {/* Top-level view toggle: Analytics vs Ticket Queue vs SLA Alerts */}
+        {/* Top-level view toggle */}
         <div className="flex gap-2">
           <button
             onClick={() => setActiveView('analytics')}
-            className={`cursor-pointer transition-all duration-200 active:scale-95 rounded-md px-4 py-2 text-sm font-medium shadow-sm ${
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               activeView === 'analytics'
-                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white border border-indigo-600'
-                : 'bg-white/70 backdrop-blur-md text-gray-700 border border-white/20 hover:bg-white'
+                ? 'bg-indigo-50 text-indigo-700'
+                : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            📊 Analytics
+            <BarChart3 className="w-4 h-4" /> Analytics
           </button>
           <button
             onClick={() => setActiveView('queue')}
-            className={`cursor-pointer transition-all duration-200 active:scale-95 rounded-md px-4 py-2 text-sm font-medium shadow-sm ${
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               activeView === 'queue'
-                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white border border-indigo-600'
-                : 'bg-white/70 backdrop-blur-md text-gray-700 border border-white/20 hover:bg-white'
+                ? 'bg-indigo-50 text-indigo-700'
+                : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            📋 Ticket Queue
+            <ListTodo className="w-4 h-4" /> Ticket Queue
           </button>
           <button
             onClick={() => { setActiveView('alerts'); fetchAlertCount(); }}
-            className={`cursor-pointer transition-all duration-200 active:scale-95 rounded-md px-4 py-2 text-sm font-medium relative shadow-sm ${
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium relative transition-colors ${
               activeView === 'alerts'
-                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white border border-indigo-600'
-                : 'bg-white/70 backdrop-blur-md text-gray-700 border border-white/20 hover:bg-white'
+                ? 'bg-indigo-50 text-indigo-700'
+                : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            🚨 SLA Alerts
+            <AlertCircle className="w-4 h-4" /> SLA Alerts
             {slaAlertCount > 0 && (
-              <span className="absolute -top-2 -right-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-xs font-bold animate-pulse shadow-lg">
+              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
                 {slaAlertCount > 99 ? '99+' : slaAlertCount}
               </span>
             )}
@@ -339,8 +357,8 @@ export default function Dashboard() {
         </div>
 
         {error && (
-          <div className="rounded-md bg-red-50/80 backdrop-blur-sm p-4 text-sm text-red-700 border border-red-200">
-            {error}
+          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 border border-red-200 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" /> {error}
           </div>
         )}
 
@@ -362,48 +380,51 @@ export default function Dashboard() {
         <>
 
         <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
             <button
               onClick={() => { setIsArchivedView(false); setPage(1); }}
-              className={`cursor-pointer transition-all duration-200 active:scale-95 rounded-md px-4 py-2 text-sm font-medium shadow-sm ${!isArchivedView ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white border-blue-600' : 'bg-white/70 backdrop-blur-md text-gray-700 border border-white/20 hover:bg-white'}`}
+              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${!isArchivedView ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
             >
-              Active Queue
+              <Inbox className="w-4 h-4" /> Active
             </button>
             <button
               onClick={() => { setIsArchivedView(true); setPage(1); }}
-              className={`cursor-pointer transition-all duration-200 active:scale-95 rounded-md px-4 py-2 text-sm font-medium shadow-sm ${isArchivedView ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white border-blue-600' : 'bg-white/70 backdrop-blur-md text-gray-700 border border-white/20 hover:bg-white'}`}
+              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${isArchivedView ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
             >
-              Archived Queue
+              <Archive className="w-4 h-4" /> Archived
             </button>
           </div>
           <button
             onClick={openCreateModal}
-            className="cursor-pointer transition-all duration-200 active:scale-95 rounded-md bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 shadow-md"
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition-colors"
           >
-            + Create Ticket
+            <Plus className="w-4 h-4" /> Create Ticket
           </button>
         </div>
 
         {/* Filters Bar */}
-        <div className="rounded-xl bg-white/60 backdrop-blur-lg shadow-xl border border-white/40 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-700">Find Tickets</h3>
-            <div className="flex gap-4">
-              <button onClick={handleExportCsv} className="text-sm text-green-600 hover:underline">
-                ↓ Export CSV
+        <div className="rounded-xl bg-white shadow-sm border border-gray-200 p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <h3 className="text-sm font-semibold text-gray-900">Filters & Search</h3>
+            <div className="flex gap-3">
+              <button onClick={handleExportCsv} className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                <Download className="w-4 h-4" /> Export CSV
               </button>
-              <button onClick={clearFilters} className="text-sm text-blue-600 hover:underline">
-                Clear Filters
+              <button onClick={clearFilters} className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                <FilterX className="w-4 h-4" /> Clear
               </button>
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <Search className="h-4 w-4 text-gray-400" />
+              </div>
               <input
                 type="text"
-                placeholder="Search subject or description..."
-                className="w-full rounded border border-gray-300 bg-white/50 px-3 py-2 text-sm text-black"
+                placeholder="Search subject..."
+                className="block w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
               />
@@ -412,40 +433,32 @@ export default function Dashboard() {
             <select
               value={status}
               onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-              className="w-full rounded border border-gray-300 bg-white/50 px-3 py-2 text-sm text-black"
+              className="block w-full rounded-lg border border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
             >
               <option value="">Any Status</option>
-              <option value="NEW">NEW</option>
-              <option value="OPEN">OPEN</option>
-              <option value="PENDING">PENDING</option>
-              <option value="RESOLVED">RESOLVED</option>
-              <option value="CLOSED">CLOSED</option>
+              <option value="NEW">New</option>
+              <option value="OPEN">Open</option>
+              <option value="PENDING">Pending</option>
+              <option value="RESOLVED">Resolved</option>
+              <option value="CLOSED">Closed</option>
             </select>
 
             <select
               value={priority}
               onChange={(e) => { setPriority(e.target.value); setPage(1); }}
-              className="w-full rounded border border-gray-300 bg-white/50 px-3 py-2 text-sm text-black"
+              className="block w-full rounded-lg border border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
             >
               <option value="">Any Priority</option>
-              <option value="URGENT">URGENT</option>
-              <option value="HIGH">HIGH</option>
-              <option value="MEDIUM">MEDIUM</option>
-              <option value="LOW">LOW</option>
+              <option value="URGENT">Urgent</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
             </select>
-
-            <input
-              type="text"
-              placeholder="Category (Exact match)"
-              className="w-full rounded border border-gray-300 bg-white/50 px-3 py-2 text-sm text-black"
-              value={category}
-              onChange={(e) => { setCategory(e.target.value); setPage(1); }}
-            />
 
             <select
               value={assigneeId}
               onChange={(e) => { setAssigneeId(e.target.value); setPage(1); }}
-              className="w-full rounded border border-gray-300 bg-white/50 px-3 py-2 text-sm text-black"
+              className="block w-full rounded-lg border border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
             >
               <option value="">Any Assignee</option>
               {users.map(u => (
@@ -453,10 +466,11 @@ export default function Dashboard() {
               ))}
             </select>
 
+            {/* Additional sorting line */}
             <select
               value={sortBy}
               onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
-              className="w-full rounded border border-gray-300 bg-white/50 px-3 py-2 text-sm text-black"
+              className="block w-full rounded-lg border border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
             >
               <option value="createdAt">Sort by: Created Date</option>
               <option value="priority">Sort by: Priority</option>
@@ -466,7 +480,7 @@ export default function Dashboard() {
             <select
               value={sortOrder}
               onChange={(e) => { setSortOrder(e.target.value); setPage(1); }}
-              className="w-full rounded border border-gray-300 bg-white/50 px-3 py-2 text-sm text-black"
+              className="block w-full rounded-lg border border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
             >
               <option value="desc">Descending</option>
               <option value="asc">Ascending</option>
@@ -475,19 +489,21 @@ export default function Dashboard() {
         </div>
 
         {/* Bulk Actions Toolbar */}
+        {/* Bulk Actions Toolbar */}
         {selectedTicketIds.length > 0 && (
-          <div className="rounded-xl bg-indigo-50/80 backdrop-blur-md shadow-lg border border-indigo-200 p-4 flex items-center justify-between animate-in slide-in-from-top-2">
-            <span className="text-sm font-medium text-indigo-800">
+          <div className="rounded-xl bg-gray-900 shadow-xl border border-gray-800 p-4 flex items-center justify-between animate-in slide-in-from-top-2 fade-in">
+            <span className="text-sm font-medium text-white flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-indigo-400" />
               {selectedTicketIds.length} ticket(s) selected
             </span>
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               <div className="flex items-center gap-2">
                 <select
                   value={bulkAssigneeId}
                   onChange={(e) => setBulkAssigneeId(e.target.value)}
-                  className="rounded border border-indigo-300 bg-white/50 px-3 py-1.5 text-sm text-black"
+                  className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-indigo-500"
                 >
-                  <option value="">Select Assignee...</option>
+                  <option value="">Assign to...</option>
                   {users.filter(u => u.role === 'AGENT').map(u => (
                     <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
@@ -495,14 +511,14 @@ export default function Dashboard() {
                 <button
                   onClick={handleBulkReassign}
                   disabled={!bulkAssigneeId}
-                  className="cursor-pointer transition-all duration-200 active:scale-95 rounded bg-gradient-to-r from-indigo-600 to-indigo-500 px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 shadow-sm disabled:opacity-50"
+                  className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 shadow-sm disabled:opacity-50 transition-colors"
                 >
                   Reassign
                 </button>
               </div>
               <button
                 onClick={handleBulkClose}
-                className="cursor-pointer transition-all duration-200 active:scale-95 rounded bg-gradient-to-r from-red-600 to-rose-500 px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 shadow-sm"
+                className="rounded-lg bg-gray-800 border border-gray-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700 shadow-sm transition-colors"
               >
                 Close Selected
               </button>
@@ -511,8 +527,9 @@ export default function Dashboard() {
         )}
 
         {/* Ticket List */}
-        <div className="rounded-xl bg-white/60 backdrop-blur-lg shadow-xl border border-white/40 overflow-hidden">
-          <div className="border-b border-gray-200/50 bg-white/50 px-6 py-4 flex justify-between items-center">
+        {/* Ticket List */}
+        <div className="rounded-xl bg-white shadow-sm border border-gray-200 overflow-hidden">
+          <div className="border-b border-gray-200 bg-gray-50/50 px-6 py-4 flex justify-between items-center">
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
@@ -521,12 +538,12 @@ export default function Dashboard() {
                 onChange={toggleSelectAll}
                 title="Select all on page"
               />
-              <h2 className="text-lg font-medium text-gray-900">
+              <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
                 {isArchivedView ? 'Archived Tickets' : (user.role === 'SUPERVISOR' ? 'All Active Tickets' : 'My Active Tickets')}
               </h2>
             </div>
-            <span className="text-sm text-gray-500">
-              Showing {tickets.length} of {totalTickets}
+            <span className="text-sm font-medium text-gray-500">
+              {totalTickets} total
             </span>
           </div>
           
@@ -535,7 +552,7 @@ export default function Dashboard() {
               <li className="px-6 py-8 text-center text-gray-500">No tickets found matching your filters.</li>
             ) : (
               tickets.map((ticket) => (
-                <li key={ticket.id} className="px-6 py-4 hover:bg-white/40 flex items-center transition-colors">
+                <li key={ticket.id} className="px-6 py-4 hover:bg-gray-50 flex items-center transition-colors group">
                   <div className="mr-4">
                     <input
                       type="checkbox"
@@ -549,16 +566,39 @@ export default function Dashboard() {
                       className="cursor-pointer flex-1 mr-4"
                       onClick={() => setDetailsModalTicket(ticket)}
                     >
-                      <p className="font-medium text-gray-900 hover:text-blue-600">{ticket.subject}</p>
-                      <p className="text-sm text-gray-500">
-                        Requester: {ticket.requesterEmail} | Status: {ticket.status} | Priority: {ticket.priority} | Category: {ticket.category}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-                        <span>Assignee: {ticket.primaryAssignee?.name || 'Unassigned'}</span>
+                      <div className="flex items-center gap-3 mb-1">
+                        <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">{ticket.subject}</p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                          ticket.status === 'NEW' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                          ticket.status === 'OPEN' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          ticket.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          ticket.status === 'RESOLVED' ? 'bg-green-50 text-green-700 border-green-200' :
+                          'bg-gray-100 text-gray-700 border-gray-200'
+                        }`}>
+                          {ticket.status}
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                          ticket.priority === 'URGENT' ? 'bg-red-50 text-red-700 border-red-200' :
+                          ticket.priority === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                          ticket.priority === 'MEDIUM' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          'bg-gray-50 text-gray-600 border-gray-200'
+                        }`}>
+                          {ticket.priority}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {ticket.requesterEmail}</span>
+                        <span className="flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" /> {ticket.category}</span>
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Assignee: {ticket.primaryAssignee?.name || 'Unassigned'}
+                        </span>
+                        
                         {/* Supervisor reassign select */}
                         {user.role === 'SUPERVISOR' && (
                           <select
-                            className="rounded border border-gray-300 bg-white/50 text-xs px-2 py-1 text-black"
+                            className="rounded border border-gray-300 bg-white text-xs px-2 py-1 text-black shadow-sm"
                             value={ticket.primaryAssigneeId || ""}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => handleReassignTicket(ticket.id, e.target.value)}
@@ -574,25 +614,25 @@ export default function Dashboard() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => setDetailsModalTicket(ticket)}
-                        className="cursor-pointer transition-all duration-200 active:scale-95 rounded border border-blue-300 bg-blue-50/50 px-3 py-1 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                        className="rounded bg-white border border-gray-200 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors shadow-sm"
                       >
-                        View Details
+                        View
                       </button>
 
                       {canActOnTicket(ticket) && (
                         <>
                           <button
                             onClick={() => openEditModal(ticket)}
-                            className="cursor-pointer transition-all duration-200 active:scale-95 rounded border border-gray-300 bg-white/50 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            className="rounded bg-white border border-gray-200 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleToggleArchive(ticket)}
-                            className="cursor-pointer transition-all duration-200 active:scale-95 rounded border border-gray-300 bg-white/50 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            className="rounded bg-white border border-gray-200 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
                           >
                             {isArchivedView ? 'Restore' : 'Archive'}
                           </button>
@@ -611,17 +651,17 @@ export default function Dashboard() {
               <button
                 disabled={page === 1}
                 onClick={() => setPage(page - 1)}
-                className="cursor-pointer transition-all duration-200 active:scale-95 rounded-md border border-gray-300 bg-white/80 backdrop-blur-sm px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 shadow-sm transition-colors"
               >
                 Previous
               </button>
-              <span className="text-sm text-gray-700">
+              <span className="text-sm font-medium text-gray-500">
                 Page {page} of {totalPages}
               </span>
               <button
                 disabled={page === totalPages || totalPages === 0}
                 onClick={() => setPage(page + 1)}
-                className="cursor-pointer transition-all duration-200 active:scale-95 rounded-md border border-gray-300 bg-white/80 backdrop-blur-sm px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 shadow-sm transition-colors"
               >
                 Next
               </button>

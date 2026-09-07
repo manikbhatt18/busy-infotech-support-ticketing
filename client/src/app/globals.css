@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
-  --foreground: #102a43;
+  --background: #f9fafb; /* gray-50 */
+  --foreground: #0f172a; /* slate-900 */
 }
 
 @theme inline {
@@ -14,7 +14,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    /* For a true SaaS we might want a dark mode, but let's stick to clean white/gray for now */
+    --background: #0f172a;
     --foreground: #f8fafc;
   }
 }
@@ -24,6 +25,6 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
-  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-

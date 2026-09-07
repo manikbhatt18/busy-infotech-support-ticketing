@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import Loader from "@/components/Loader";
+import { X, Clock, User, Users, Tag, AlertCircle, MessageSquare, ShieldAlert, CheckCircle2, Lock } from "lucide-react";
 
 // Goal 4: Transition table mirrored on the client so the UI only shows legal options.
 // The server is the real enforcer — this is purely to avoid presenting impossible choices.
@@ -231,54 +232,48 @@ export default function TicketDetailsModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="flex h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-white/90 backdrop-blur-xl shadow-2xl border border-white/20 overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-gray-900/60 p-4 animate-in fade-in duration-200">
+      <div className="flex h-[90vh] w-full max-w-6xl flex-col rounded-2xl bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200/50 bg-white/50 p-6 pb-4">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-gray-900 truncate">{liveTicket.subject}</h2>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
-              <span>Requester: <span className="font-medium text-gray-900">{liveTicket.requesterEmail}</span></span>
-              <span>|</span>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusColors[liveTicket.status] ?? 'bg-gray-100 text-gray-700'}`}>
-                {liveTicket.status}
+        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+          <div className="flex-1 min-w-0 flex items-center gap-4">
+            <h2 className="text-lg font-semibold text-gray-900 truncate">
+              {liveTicket.subject}
+            </h2>
+            <span className={`rounded-md px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${statusColors[liveTicket.status] ?? 'bg-gray-100 text-gray-700'}`}>
+              {liveTicket.status}
+            </span>
+            {slaDisplay && (
+              <span className={`rounded-md border px-2.5 py-0.5 text-xs font-semibold flex items-center gap-1 ${slaDisplay.color}`}>
+                <Clock className="w-3.5 h-3.5" /> {slaDisplay.label}
               </span>
-              <span>|</span>
-              <span>Priority: <span className="font-medium text-gray-900">{liveTicket.priority}</span></span>
-              {slaDisplay && (
-                <>
-                  <span>|</span>
-                  <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${slaDisplay.color}`}>
-                    {slaDisplay.label}
-                  </span>
-                </>
-              )}
-            </div>
+            )}
           </div>
-          <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600 flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-110 active:scale-95">
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Goal 4: Status Transition Controls */}
         {legalTransitions.length > 0 && (
-          <div className="border-b bg-gray-50 px-6 py-3 flex items-center gap-3 flex-wrap">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Move to:</span>
+          <div className="border-b border-gray-200 bg-gray-50 px-6 py-3 flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+              <CheckCircle2 className="w-4 h-4" /> Move Status:
+            </span>
             {legalTransitions.map((status) => (
               <button
                 key={status}
                 disabled={statusUpdating}
                 onClick={() => handleStatusTransition(status)}
-                className={`cursor-pointer transition-all duration-200 active:scale-95 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm disabled:opacity-50 ${
+                className={`rounded-md border px-3 py-1 text-xs font-semibold shadow-sm disabled:opacity-50 transition-colors ${
                   status === 'CLOSED'
-                    ? 'border-gray-400 bg-white text-gray-600 hover:bg-gray-100'
+                    ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                     : status === 'RESOLVED'
-                    ? 'border-green-400 bg-white text-green-700 hover:bg-green-50'
+                    ? 'border-green-300 bg-white text-green-700 hover:bg-green-50'
                     : status === 'PENDING'
-                    ? 'border-yellow-400 bg-white text-yellow-700 hover:bg-yellow-50'
-                    : 'border-blue-400 bg-white text-blue-700 hover:bg-blue-50'
+                    ? 'border-yellow-300 bg-white text-yellow-700 hover:bg-yellow-50'
+                    : 'border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50'
                 }`}
               >
                 {statusUpdating ? '...' : `→ ${status}`}
@@ -290,68 +285,12 @@ export default function TicketDetailsModal({
           </div>
         )}
 
-        {/* Content Body */}
-        <div className="flex-1 overflow-y-auto bg-gray-50/50 p-6 text-gray-900">
+        {/* 2-Column Split Body */}
+        <div className="flex flex-1 overflow-hidden">
           
-          {/* Goal 5: Collaborators Panel */}
-          <div className="mb-6 rounded-lg bg-white p-4 shadow-sm border border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center justify-between">
-              Collaborators
-              {canManageCollaborators && availableAgents && availableAgents.length > 0 && (
-                <select
-                  className="ml-4 text-xs rounded border border-gray-300 py-1 px-2 font-normal text-gray-700 bg-white cursor-pointer"
-                  value=""
-                  onChange={(e) => handleAddCollaborator(e.target.value)}
-                >
-                  <option value="" disabled>+ Add Collaborator</option>
-                  {availableAgents.map((u: any) => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-                </select>
-              )}
-            </h3>
-            
-            {collabError && <p className="text-xs text-red-600 mb-2">{collabError}</p>}
-            
-            <div className="flex flex-wrap gap-2">
-              {!liveTicket.collaborators || liveTicket.collaborators.length === 0 ? (
-                <span className="text-xs text-gray-500 italic">No collaborators yet.</span>
-              ) : (
-                liveTicket.collaborators.map((c: any) => (
-                  <div key={c.userId} className="flex items-center gap-1 bg-gray-100 border border-gray-200 rounded-full px-2 py-1 text-xs">
-                    <span className="font-medium text-gray-700" title={c.user?.email}>{c.user?.name || c.userId}</span>
-                    {canManageCollaborators && (
-                      <button
-                        onClick={() => handleRemoveCollaborator(c.userId)}
-                        className="text-gray-400 hover:text-red-500 ml-1 rounded-full p-0.5"
-                        title="Remove collaborator"
-                      >
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="mb-6 rounded-lg bg-white p-4 shadow-sm border border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Original Description</h3>
-            <p className="whitespace-pre-wrap text-sm text-gray-800">{liveTicket.description}</p>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Timeline & Replies</h3>
-
-            {loadingReplies && <Loader text="Loading replies..." />}
-            {error && <p className="text-sm text-red-500">{error}</p>}
-
-            {replies.length === 0 && !loadingReplies && !error && (
-              <p className="text-sm text-gray-500 italic">No replies yet.</p>
-            )}
-
+          {/* Main Left Column (Conversation & Composer) */}
+          <div className="flex flex-col flex-1 border-r border-gray-200 overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {replies.map((reply) => {
               const isCustomer = reply.authorType === 'CUSTOMER';
               // Decision 10: for customer replies, fall back to ticket.requesterEmail
@@ -362,91 +301,175 @@ export default function TicketDetailsModal({
               return (
                 <div
                   key={reply.id}
-                  className={`rounded-lg p-4 border ${
+                  className={`rounded-xl p-5 border ${
                     reply.isInternal
-                      ? "bg-yellow-50 border-yellow-200"
+                      ? "bg-yellow-50/50 border-yellow-200"
                       : isCustomer
-                        ? "bg-green-50 border-green-200"
-                        : "bg-white border-blue-100 shadow-sm"
+                        ? "bg-indigo-50/30 border-indigo-100 ml-4"
+                        : "bg-white border-gray-200 shadow-sm mr-4"
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{authorName}</span>
+                      <div className={`flex items-center justify-center w-6 h-6 rounded-full text-white text-xs ${
+                        reply.isInternal ? "bg-yellow-500" : isCustomer ? "bg-indigo-500" : "bg-gray-600"
+                      }`}>
+                        {authorName.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="font-semibold text-sm text-gray-900">{authorName}</span>
                       {reply.isInternal && (
-                        <span className="rounded-full bg-yellow-200 px-2 py-0.5 text-xs font-medium text-yellow-800">
-                          Internal Note
+                        <span className="flex items-center gap-1 rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                          <Lock className="w-3 h-3" /> Internal Note
                         </span>
                       )}
                       {isCustomer && (
-                        <span className="rounded-full bg-green-200 px-2 py-0.5 text-xs font-medium text-green-800">
+                        <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800">
                           Customer
                         </span>
                       )}
                       {!reply.isInternal && !isCustomer && (
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                          Agent Reply
+                        <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                          Agent
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-gray-500">
-                      {new Date(reply.createdAt).toLocaleString()}
+                    <span className="text-xs text-gray-500 font-medium">
+                      {new Date(reply.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
                     </span>
                   </div>
-                  <p className="whitespace-pre-wrap text-sm text-gray-800">{reply.body}</p>
+                  <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">{reply.body}</p>
                 </div>
               );
             })}
           </div>
-        </div>
 
-        {/* Reply Composer */}
-        <div className="border-t bg-white p-6">
-          <div className="space-y-4 text-black">
-            <div>
-              <textarea
-                rows={3}
-                placeholder="Type your reply here..."
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={replyBody}
-                onChange={(e) => setReplyBody(e.target.value)}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  checked={isInternal}
-                  onChange={(e) => setIsInternal(e.target.checked)}
+            {/* Reply Composer */}
+            <div className="border-t border-gray-200 bg-white p-6 shrink-0">
+              <div className="space-y-4">
+                <textarea
+                  rows={3}
+                  placeholder="Type your reply here..."
+                  className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
                 />
-                Mark as Internal Note (hidden from customer)
-              </label>
 
-              <div className="flex gap-3">
-                {/* Secondary/Outlined — Simulate Customer Reply */}
-                <button
-                  type="button"
-                  disabled={submitting || isInternal}
-                  onClick={() => handlePostReply('CUSTOMER')}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                  title={isInternal ? "Customers cannot post internal notes" : "Simulate an incoming response from the customer"}
-                >
-                  Simulate Customer Reply
-                </button>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                      checked={isInternal}
+                      onChange={(e) => setIsInternal(e.target.checked)}
+                    />
+                    <Lock className="w-4 h-4 text-gray-500" />
+                    Mark as Internal Note
+                  </label>
 
-                {/* Primary — Post Agent Reply */}
-                <button
-                  type="button"
-                  disabled={submitting}
-                  onClick={() => handlePostReply('AGENT')}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  Post Reply
-                </button>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      disabled={submitting || isInternal}
+                      onClick={() => handlePostReply('CUSTOMER')}
+                      className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm"
+                      title={isInternal ? "Customers cannot post internal notes" : "Simulate an incoming response from the customer"}
+                    >
+                      Customer Reply
+                    </button>
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => handlePostReply('AGENT')}
+                      className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-sm"
+                    >
+                      Send Reply
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
+
+          {/* Right Sidebar (Metadata) */}
+          <div className="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto shrink-0 flex flex-col gap-6">
+            
+            {/* Metadata Block */}
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><User className="w-4 h-4" /> Requester</h4>
+                <p className="text-sm font-medium text-gray-900">{liveTicket.requesterEmail}</p>
+              </div>
+              
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Tag className="w-4 h-4" /> Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Priority</span>
+                    <span className="font-medium text-gray-900">{liveTicket.priority}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Category</span>
+                    <span className="font-medium text-gray-900">{liveTicket.category}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Assignee</span>
+                    <span className="font-medium text-gray-900">{liveTicket.primaryAssignee?.name || 'Unassigned'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Original Description */}
+            <div className="border-t border-gray-100 pt-6">
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Original Description</h4>
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                <p className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{liveTicket.description}</p>
+              </div>
+            </div>
+
+            {/* Collaborators */}
+            <div className="border-t border-gray-100 pt-6">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Users className="w-4 h-4" /> Collaborators</h4>
+              </div>
+              
+              <div className="space-y-2">
+                {!liveTicket.collaborators || liveTicket.collaborators.length === 0 ? (
+                  <p className="text-xs text-gray-500 italic">No collaborators</p>
+                ) : (
+                  liveTicket.collaborators.map((c: any) => (
+                    <div key={c.userId} className="flex items-center justify-between group">
+                      <span className="text-sm font-medium text-gray-700">{c.user?.name || c.userId}</span>
+                      {canManageCollaborators && (
+                        <button
+                          onClick={() => handleRemoveCollaborator(c.userId)}
+                          className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+                
+                {canManageCollaborators && availableAgents && availableAgents.length > 0 && (
+                  <div className="pt-2">
+                    <select
+                      className="w-full text-xs rounded-md border border-gray-300 py-1.5 px-2 bg-white text-gray-700"
+                      value=""
+                      onChange={(e) => handleAddCollaborator(e.target.value)}
+                    >
+                      <option value="" disabled>+ Add Collaborator...</option>
+                      {availableAgents.map((u: any) => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {collabError && <p className="text-xs text-red-600 mt-1">{collabError}</p>}
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

@@ -13,6 +13,7 @@ import {
   Cell,
 } from "recharts";
 import Loader from "@/components/Loader";
+import { Inbox, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface AnalyticsData {
   headlines: {
@@ -68,38 +69,38 @@ export default function AnalyticsDashboard() {
         <HeadlineCard
           title="Open Tickets"
           value={headlines.openTickets}
-          icon="📬"
-          color="border-blue-400 bg-blue-50"
-          valueColor="text-blue-700"
+          icon={<Inbox className="w-6 h-6 text-indigo-500" />}
+          color="border-indigo-500 bg-white"
+          valueColor="text-gray-900"
         />
         <HeadlineCard
           title="Pending on Customer"
           value={headlines.pendingTickets}
-          icon="⏳"
-          color="border-amber-400 bg-amber-50"
-          valueColor="text-amber-700"
+          icon={<Clock className="w-6 h-6 text-amber-500" />}
+          color="border-amber-400 bg-white"
+          valueColor="text-gray-900"
         />
         <HeadlineCard
           title="Resolved This Week"
           value={headlines.resolvedThisWeek}
-          icon="✅"
-          color="border-emerald-400 bg-emerald-50"
-          valueColor="text-emerald-700"
+          icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />}
+          color="border-emerald-400 bg-white"
+          valueColor="text-gray-900"
         />
         <HeadlineCard
           title="Breaching SLA"
           value={headlines.breachingTickets}
-          icon="🚨"
-          color="border-red-400 bg-red-50"
-          valueColor="text-red-700"
+          icon={<AlertCircle className="w-6 h-6 text-red-500" />}
+          color="border-red-500 bg-white"
+          valueColor="text-red-600"
         />
       </div>
 
       {/* Breakdowns Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* By Status */}
-        <div className="rounded-xl bg-white/60 backdrop-blur-lg shadow-xl border border-white/40 p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Tickets by Status</h3>
+        <div className="rounded-xl bg-white shadow-sm border border-gray-200 p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Tickets by Status</h3>
           <div className="space-y-3">
             {statusBreakdown.length === 0 ? (
               <p className="text-sm text-gray-400">No tickets found.</p>
@@ -130,8 +131,8 @@ export default function AnalyticsDashboard() {
         </div>
 
         {/* By Agent */}
-        <div className="rounded-xl bg-white/60 backdrop-blur-lg shadow-xl border border-white/40 p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Tickets by Agent</h3>
+        <div className="rounded-xl bg-white shadow-sm border border-gray-200 p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Tickets by Agent</h3>
           <div className="space-y-3">
             {agentBreakdown.length === 0 ? (
               <p className="text-sm text-gray-400">No tickets found.</p>
@@ -160,8 +161,8 @@ export default function AnalyticsDashboard() {
       </div>
 
       {/* 8-Week Resolution Chart */}
-      <div className="rounded-xl bg-white/60 backdrop-blur-lg shadow-xl border border-white/40 p-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">
+      <div className="rounded-xl bg-white shadow-sm border border-gray-200 p-6">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">
           Tickets Resolved Per Week (Last 8 Weeks)
         </h3>
         {weeklyResolved.every((w) => w.count === 0) ? (
@@ -214,18 +215,20 @@ function HeadlineCard({
 }: {
   title: string;
   value: number;
-  icon: string;
+  icon: React.ReactNode;
   color: string;
   valueColor: string;
 }) {
   return (
-    <div className={`rounded-2xl border-l-4 ${color} p-5 shadow-lg backdrop-blur-sm transition-transform hover:-translate-y-1`}>
+    <div className={`rounded-xl border-l-4 ${color} p-5 shadow-sm border-t border-r border-b border-gray-200 transition-transform hover:-translate-y-0.5`}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
-          <p className={`text-3xl font-bold mt-1 ${valueColor}`}>{value}</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</p>
+          <p className={`text-3xl font-bold mt-2 ${valueColor}`}>{value}</p>
         </div>
-        <span className="text-3xl">{icon}</span>
+        <div className="p-3 bg-gray-50 rounded-lg">
+          {icon}
+        </div>
       </div>
     </div>
   );

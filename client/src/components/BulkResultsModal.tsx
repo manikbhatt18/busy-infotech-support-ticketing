@@ -1,4 +1,5 @@
 import React from 'react';
+import { X, CheckCircle2, AlertCircle } from "lucide-react";
 
 export type BulkResult = {
   ticketId: string;
@@ -19,26 +20,28 @@ export default function BulkResultsModal({ isOpen, onClose, results }: BulkResul
   const failureCount = results.length - successCount;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl rounded-2xl bg-white/90 backdrop-blur-xl shadow-2xl border border-white/20 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
-        <div className="border-b border-gray-200/50 p-6 flex justify-between items-center bg-white/50 rounded-t-2xl">
-          <h2 className="text-xl font-bold text-gray-900">Bulk Action Results</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+        <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center bg-white rounded-t-2xl">
+          <h2 className="text-lg font-semibold text-gray-900">Bulk Action Results</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 font-bold text-xl cursor-pointer transition-all duration-200 hover:scale-110 active:scale-95"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
           >
-            &times;
+            <X className="w-5 h-5" />
           </button>
         </div>
         
         <div className="p-6">
           <div className="mb-4 flex gap-4">
-            <div className="rounded-lg bg-green-50 p-3 text-green-800 border border-green-200">
-              <span className="font-bold">{successCount}</span> Succeeded
+            <div className="rounded-lg bg-green-50 px-4 py-3 text-green-800 border border-green-200 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              <span><strong className="font-semibold">{successCount}</strong> Succeeded</span>
             </div>
             {failureCount > 0 && (
-              <div className="rounded-lg bg-red-50 p-3 text-red-800 border border-red-200">
-                <span className="font-bold">{failureCount}</span> Failed
+              <div className="rounded-lg bg-red-50 px-4 py-3 text-red-800 border border-red-200 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <span><strong className="font-semibold">{failureCount}</strong> Failed</span>
               </div>
             )}
           </div>
@@ -79,12 +82,12 @@ export default function BulkResultsModal({ isOpen, onClose, results }: BulkResul
           </div>
         </div>
 
-        <div className="border-t border-gray-200 bg-gray-50 p-4 rounded-b-lg flex justify-end">
+        <div className="border-t border-gray-200 bg-gray-50 p-4 rounded-b-2xl flex justify-end">
           <button
             onClick={onClose}
-            className="rounded bg-blue-600 px-6 py-2 font-medium text-white hover:bg-blue-700"
+            className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-500 shadow-sm transition-colors"
           >
-            Okay
+            Close
           </button>
         </div>
       </div>

@@ -19,13 +19,13 @@ export default function BulkResultsModal({ isOpen, onClose, results }: BulkResul
   const failureCount = results.length - successCount;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl flex flex-col max-h-[85vh]">
-        <div className="border-b border-gray-200 p-6 flex justify-between items-center bg-gray-50 rounded-t-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl rounded-2xl bg-white/90 backdrop-blur-xl shadow-2xl border border-white/20 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+        <div className="border-b border-gray-200/50 p-6 flex justify-between items-center bg-white/50 rounded-t-2xl">
           <h2 className="text-xl font-bold text-gray-900">Bulk Action Results</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 font-bold text-xl"
+            className="text-gray-500 hover:text-gray-700 font-bold text-xl cursor-pointer transition-all duration-200 hover:scale-110 active:scale-95"
           >
             &times;
           </button>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
+import Loader from "@/components/Loader";
 
 interface SlaAlert {
   ticketId: string;
@@ -65,11 +66,7 @@ export default function SlaAlertsPanel({ onTicketClick, onAlertAcknowledged }: S
   };
 
   if (loading) {
-    return (
-      <div className="rounded-lg bg-white shadow p-8 text-center text-gray-500">
-        Loading SLA alerts...
-      </div>
-    );
+    return <Loader text="Loading SLA alerts..." />;
   }
 
   if (error) {
@@ -86,7 +83,7 @@ export default function SlaAlertsPanel({ onTicketClick, onAlertAcknowledged }: S
   return (
     <div className="space-y-6">
       {/* Summary Header */}
-      <div className="rounded-lg bg-white shadow p-6">
+      <div className="rounded-xl bg-white/60 backdrop-blur-lg shadow-xl border border-white/40 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-2">
           🚨 SLA Alerts
         </h2>
@@ -108,8 +105,8 @@ export default function SlaAlertsPanel({ onTicketClick, onAlertAcknowledged }: S
 
       {/* Breached Section */}
       {breached.length > 0 && (
-        <div className="rounded-lg bg-white shadow overflow-hidden">
-          <div className="px-6 py-3 bg-red-50 border-b border-red-200">
+        <div className="rounded-xl bg-white/80 backdrop-blur-md shadow-xl border border-white/40 overflow-hidden">
+          <div className="px-6 py-3 bg-red-50/80 border-b border-red-200">
             <h3 className="text-sm font-semibold text-red-800">
               🔴 Breached ({breached.length})
             </h3>
@@ -130,8 +127,8 @@ export default function SlaAlertsPanel({ onTicketClick, onAlertAcknowledged }: S
 
       {/* Near Breach Section */}
       {nearBreach.length > 0 && (
-        <div className="rounded-lg bg-white shadow overflow-hidden">
-          <div className="px-6 py-3 bg-orange-50 border-b border-orange-200">
+        <div className="rounded-xl bg-white/80 backdrop-blur-md shadow-xl border border-white/40 overflow-hidden">
+          <div className="px-6 py-3 bg-orange-50/80 border-b border-orange-200">
             <h3 className="text-sm font-semibold text-orange-800">
               🟠 Near Breach ({nearBreach.length})
             </h3>
@@ -152,7 +149,7 @@ export default function SlaAlertsPanel({ onTicketClick, onAlertAcknowledged }: S
 
       {/* Empty State */}
       {alerts.length === 0 && (
-        <div className="rounded-lg bg-white shadow p-12 text-center">
+        <div className="rounded-xl bg-white/60 backdrop-blur-lg shadow-xl border border-white/40 p-12 text-center">
           <div className="text-4xl mb-3">✅</div>
           <p className="text-gray-600 font-medium">No SLA alerts</p>
           <p className="text-sm text-gray-400 mt-1">
@@ -178,14 +175,14 @@ function AlertRow({
   const isAcking = acknowledging === alert.ticketId;
 
   return (
-    <li className="px-6 py-4 hover:bg-gray-50 transition-colors">
+    <li className="px-6 py-4 hover:bg-white/40 transition-colors">
       <div className="flex items-center justify-between gap-4">
         {/* Left: ticket info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <button
               onClick={() => onTicketClick?.(alert.ticketId)}
-              className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline truncate text-left"
+              className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline truncate text-left cursor-pointer"
               title={alert.subject}
             >
               {alert.subject}
@@ -218,10 +215,10 @@ function AlertRow({
         <button
           onClick={() => onAcknowledge(alert.ticketId)}
           disabled={isAcking}
-          className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`cursor-pointer transition-all duration-200 active:scale-95 shrink-0 rounded-md px-3 py-1.5 text-xs font-medium shadow-sm ${
             isAcking
               ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-blue-50 text-blue-700 border border-blue-300 hover:bg-blue-100"
+              : "bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-300 hover:opacity-90"
           }`}
         >
           {isAcking ? "..." : "Acknowledge"}

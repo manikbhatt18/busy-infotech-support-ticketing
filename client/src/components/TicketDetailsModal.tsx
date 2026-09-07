@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
+import Loader from "@/components/Loader";
 
 // Goal 4: Transition table mirrored on the client so the UI only shows legal options.
 // The server is the real enforcer — this is purely to avoid presenting impossible choices.
@@ -230,10 +231,10 @@ export default function TicketDetailsModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black bg-opacity-50 p-4">
-      <div className="flex h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="flex h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-white/90 backdrop-blur-xl shadow-2xl border border-white/20 overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between border-b p-6 pb-4">
+        <div className="flex items-center justify-between border-b border-gray-200/50 bg-white/50 p-6 pb-4">
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold text-gray-900 truncate">{liveTicket.subject}</h2>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
@@ -254,7 +255,7 @@ export default function TicketDetailsModal({
               )}
             </div>
           </div>
-          <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600 flex-shrink-0">
+          <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600 flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-110 active:scale-95">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -270,7 +271,7 @@ export default function TicketDetailsModal({
                 key={status}
                 disabled={statusUpdating}
                 onClick={() => handleStatusTransition(status)}
-                className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                className={`cursor-pointer transition-all duration-200 active:scale-95 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm disabled:opacity-50 ${
                   status === 'CLOSED'
                     ? 'border-gray-400 bg-white text-gray-600 hover:bg-gray-100'
                     : status === 'RESOLVED'
@@ -290,7 +291,7 @@ export default function TicketDetailsModal({
         )}
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto bg-gray-50 p-6 text-gray-900">
+        <div className="flex-1 overflow-y-auto bg-gray-50/50 p-6 text-gray-900">
           
           {/* Goal 5: Collaborators Panel */}
           <div className="mb-6 rounded-lg bg-white p-4 shadow-sm border border-gray-100">
@@ -344,7 +345,7 @@ export default function TicketDetailsModal({
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Timeline & Replies</h3>
 
-            {loadingReplies && <p className="text-sm text-gray-500">Loading replies...</p>}
+            {loadingReplies && <Loader text="Loading replies..." />}
             {error && <p className="text-sm text-red-500">{error}</p>}
 
             {replies.length === 0 && !loadingReplies && !error && (

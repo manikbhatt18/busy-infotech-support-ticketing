@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import Loader from "@/components/Loader";
 
 interface AnalyticsData {
   headlines: {
@@ -47,16 +48,12 @@ export default function AnalyticsDashboard() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-gray-500 text-sm">Loading analytics...</div>
-      </div>
-    );
+    return <Loader text="Loading analytics..." />;
   }
 
   if (error) {
     return (
-      <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</div>
+      <div className="rounded-xl bg-red-50/80 backdrop-blur-sm border border-red-200 p-4 text-sm text-red-700 shadow-md">{error}</div>
     );
   }
 
@@ -101,7 +98,7 @@ export default function AnalyticsDashboard() {
       {/* Breakdowns Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* By Status */}
-        <div className="rounded-lg bg-white shadow p-6">
+        <div className="rounded-xl bg-white/60 backdrop-blur-lg shadow-xl border border-white/40 p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Tickets by Status</h3>
           <div className="space-y-3">
             {statusBreakdown.length === 0 ? (
@@ -133,7 +130,7 @@ export default function AnalyticsDashboard() {
         </div>
 
         {/* By Agent */}
-        <div className="rounded-lg bg-white shadow p-6">
+        <div className="rounded-xl bg-white/60 backdrop-blur-lg shadow-xl border border-white/40 p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Tickets by Agent</h3>
           <div className="space-y-3">
             {agentBreakdown.length === 0 ? (
@@ -163,7 +160,7 @@ export default function AnalyticsDashboard() {
       </div>
 
       {/* 8-Week Resolution Chart */}
-      <div className="rounded-lg bg-white shadow p-6">
+      <div className="rounded-xl bg-white/60 backdrop-blur-lg shadow-xl border border-white/40 p-6">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">
           Tickets Resolved Per Week (Last 8 Weeks)
         </h3>
@@ -222,7 +219,7 @@ function HeadlineCard({
   valueColor: string;
 }) {
   return (
-    <div className={`rounded-xl border-l-4 ${color} p-5 shadow-sm`}>
+    <div className={`rounded-2xl border-l-4 ${color} p-5 shadow-lg backdrop-blur-sm transition-transform hover:-translate-y-1`}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>

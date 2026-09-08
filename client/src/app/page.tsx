@@ -424,7 +424,7 @@ export default function Dashboard() {
               <input
                 type="text"
                 placeholder="Search subject..."
-                className="block w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
               />
@@ -433,7 +433,7 @@ export default function Dashboard() {
             <select
               value={status}
               onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-              className="block w-full rounded-lg border border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
+              className="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-10 text-sm text-gray-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Any Status</option>
               <option value="NEW">New</option>
@@ -446,7 +446,7 @@ export default function Dashboard() {
             <select
               value={priority}
               onChange={(e) => { setPriority(e.target.value); setPage(1); }}
-              className="block w-full rounded-lg border border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
+              className="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-10 text-sm text-gray-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Any Priority</option>
               <option value="URGENT">Urgent</option>
@@ -458,7 +458,7 @@ export default function Dashboard() {
             <select
               value={assigneeId}
               onChange={(e) => { setAssigneeId(e.target.value); setPage(1); }}
-              className="block w-full rounded-lg border border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
+              className="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-10 text-sm text-gray-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Any Assignee</option>
               {users.map(u => (
@@ -470,7 +470,7 @@ export default function Dashboard() {
             <select
               value={sortBy}
               onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
-              className="block w-full rounded-lg border border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
+              className="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-10 text-sm text-gray-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             >
               <option value="createdAt">Sort by: Created Date</option>
               <option value="priority">Sort by: Priority</option>
@@ -480,7 +480,7 @@ export default function Dashboard() {
             <select
               value={sortOrder}
               onChange={(e) => { setSortOrder(e.target.value); setPage(1); }}
-              className="block w-full rounded-lg border border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
+              className="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-10 text-sm text-gray-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             >
               <option value="desc">Descending</option>
               <option value="asc">Ascending</option>

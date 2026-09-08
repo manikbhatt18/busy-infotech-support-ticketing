@@ -10,6 +10,7 @@ import {
   exportTicketsCsv,
   bulkCloseTickets,
   bulkReassignTickets,
+  getTicketTimeline
 } from '../controllers/tickets';
 import { addCollaborator, removeCollaborator } from '../controllers/collaborators';
 import { authenticateToken } from '../middleware/auth';
@@ -38,6 +39,9 @@ router.patch('/:id/restore', restoreTicket);
 
 // --- Goal 3 Routes ---
 router.use('/:id/replies', repliesRoutes);
+
+// --- Goal 4 & 5 Audit Timeline ---
+router.get('/:id/timeline', getTicketTimeline);
 
 // --- Goal 4 Routes ---
 // Status transitions — must come AFTER /archive and /restore to avoid route conflicts

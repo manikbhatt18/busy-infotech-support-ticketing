@@ -875,6 +875,49 @@ export const bulkReassignTickets = async (req: AuthRequest, res: Response): Prom
   }
 };
 
+// --- GET /tickets/:id/timeline (Goal 4 & 5 Audit Timeline) ---
+export const getTicketTimeline = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = req.user;
+    const ticketId = req.params.id as string;
+
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const existingTicket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { collaborators: true }
+    });
+
+    if (!existingTicket) {
+      res.status(404).json({ error: 'Ticket not found' });
+      return;
+    }
+
+    if (!canAgentActOnTicket(user, existingTicket)) {
+      res.status(403).json({ error: 'You do not have permission to view this ticket' });
+      return;
+    }
+
+    const timeline = await prisma.auditTimeline.findMany({
+      where: { ticketId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        actor: { select: { id: true, name: true, email: true } },
+        collaborator: { select: { id: true, name: true, email: true } },
+        reply: { select: { id: true, body: true, isInternal: true, authorType: true } }
+      }
+    });
+
+    res.json(timeline);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 // Export shared helpers and constants for use in replies controller (Goal 4 integration)
 export { ALLOWED_TRANSITIONS, SLA_HOURS, REOPEN_WINDOW_MS, computeSlaTargetAt, canAgentActOnTicket };
 export type { TicketWithCollaborators, JwtPayload };

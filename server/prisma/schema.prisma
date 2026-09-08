@@ -103,6 +103,8 @@ model Reply {
   createdAt DateTime @default(now())
 
   auditEvents AuditTimeline[]
+
+  @@index([ticketId])
 }
 
 enum AuditEventType {
@@ -137,6 +139,8 @@ model AuditTimeline {
   collaborator   User?   @relation("CollaboratorAudit", fields: [collaboratorId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
+
+  @@index([ticketId])
 }
 
 model SlaAcknowledgment {

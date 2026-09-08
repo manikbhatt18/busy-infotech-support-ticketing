@@ -90,11 +90,15 @@ export default function TicketDetailsModal({
   useEffect(() => {
     if (isOpen && ticket) {
       setLiveTicket(ticket);
+      setReplies([]); // CLEAR STALE STATE
       fetchReplies(ticket.id);
       setReplyBody("");
       setIsInternal(false);
       setStatusError("");
       setCollabError("");
+    } else {
+      setLiveTicket(null);
+      setReplies([]);
     }
   }, [isOpen, ticket]);
 
@@ -102,10 +106,23 @@ export default function TicketDetailsModal({
     setLoadingReplies(true);
     setError("");
     try {
-      const data = await apiFetch(`/tickets/${ticketId}/replies`);
-      setReplies(data);
+      const [repliesData, timelineData] = await Promise.all([
+        apiFetch(`/tickets/${ticketId}/replies`),
+        apiFetch(`/tickets/${ticketId}/timeline`)
+      ]);
+      
+      const formattedReplies = repliesData.map((r: any) => ({ ...r, type: 'REPLY' }));
+      const formattedEvents = timelineData
+        .filter((e: any) => e.eventType !== 'REPLY_ADDED')
+        .map((e: any) => ({ ...e, type: 'EVENT' }));
+
+      const combined = [...formattedReplies, ...formattedEvents].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      
+      setReplies(combined);
     } catch (err: any) {
-      setError(err.message || "Failed to load replies");
+      setError(err.message || "Failed to load ticket timeline");
     } finally {
       setLoadingReplies(false);
     }
@@ -291,18 +308,52 @@ export default function TicketDetailsModal({
           {/* Main Left Column (Conversation & Composer) */}
           <div className="flex flex-col flex-1 border-r border-gray-200 overflow-hidden">
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {replies.map((reply) => {
-              const isCustomer = reply.authorType === 'CUSTOMER';
-              // Decision 10: for customer replies, fall back to ticket.requesterEmail
+            {loadingReplies ? (
+              <div className="flex justify-center items-center h-32"><Loader /></div>
+            ) : replies.map((item) => {
+              if (item.type === 'EVENT') {
+                let eventText = '';
+                const actorName = item.actor?.name || 'System';
+                
+                switch(item.eventType) {
+                  case 'TICKET_CREATED': eventText = `Ticket created`; break;
+                  case 'STATUS_CHANGED': eventText = `Changed status from ${item.oldStatus} to ${item.newStatus}`; break;
+                  case 'REASSIGNED': 
+                    const oldUser = allUsers?.find(u => u.id === item.oldAssigneeId);
+                    const newUser = allUsers?.find(u => u.id === item.newAssigneeId);
+                    const oldName = oldUser ? oldUser.name : (item.oldAssigneeId || 'Unassigned');
+                    const newName = newUser ? newUser.name : (item.newAssigneeId || 'Unassigned');
+                    eventText = `Reassigned from ${oldName} to ${newName}`; 
+                    break;
+                  case 'COLLABORATOR_ADDED': eventText = `Added collaborator ${item.collaborator?.name || item.collaboratorId}`; break;
+                  case 'COLLABORATOR_REMOVED': eventText = `Removed collaborator ${item.collaborator?.name || item.collaboratorId}`; break;
+                  default: eventText = item.eventType;
+                }
+
+                return (
+                  <div key={item.id} className="flex justify-center my-4">
+                    <div className="bg-gray-50 border border-gray-100 rounded-full px-4 py-1.5 text-xs text-gray-500 font-medium flex items-center gap-2 shadow-sm">
+                      <Clock className="w-3.5 h-3.5 text-gray-400" />
+                      <span><strong className="text-gray-700">{actorName}</strong> {eventText}</span>
+                      <span className="text-gray-400 ml-1">
+                        {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Normal Reply Rendering
+              const isCustomer = item.authorType === 'CUSTOMER';
               const authorName = isCustomer
                 ? (liveTicket.requesterEmail || "Customer")
-                : (reply.author?.name || "Unknown Agent");
+                : (item.author?.name || "Unknown Agent");
 
               return (
                 <div
-                  key={reply.id}
+                  key={item.id}
                   className={`rounded-xl p-5 border ${
-                    reply.isInternal
+                    item.isInternal
                       ? "bg-yellow-50/50 border-yellow-200"
                       : isCustomer
                         ? "bg-indigo-50/30 border-indigo-100 ml-4"
@@ -312,12 +363,12 @@ export default function TicketDetailsModal({
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <div className={`flex items-center justify-center w-6 h-6 rounded-full text-white text-xs ${
-                        reply.isInternal ? "bg-yellow-500" : isCustomer ? "bg-indigo-500" : "bg-gray-600"
+                        item.isInternal ? "bg-yellow-500" : isCustomer ? "bg-indigo-500" : "bg-gray-600"
                       }`}>
                         {authorName.charAt(0).toUpperCase()}
                       </div>
                       <span className="font-semibold text-sm text-gray-900">{authorName}</span>
-                      {reply.isInternal && (
+                      {item.isInternal && (
                         <span className="flex items-center gap-1 rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
                           <Lock className="w-3 h-3" /> Internal Note
                         </span>
@@ -327,17 +378,17 @@ export default function TicketDetailsModal({
                           Customer
                         </span>
                       )}
-                      {!reply.isInternal && !isCustomer && (
+                      {!item.isInternal && !isCustomer && (
                         <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                          Agent
+                          {item.author?.role === 'SUPERVISOR' ? 'Supervisor' : 'Agent'}
                         </span>
                       )}
                     </div>
                     <span className="text-xs text-gray-500 font-medium">
-                      {new Date(reply.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                      {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
                     </span>
                   </div>
-                  <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">{reply.body}</p>
+                  <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">{item.body}</p>
                 </div>
               );
             })}

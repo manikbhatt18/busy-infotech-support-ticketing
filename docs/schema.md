@@ -7,7 +7,7 @@ Answer each of these, in your own words.
   - **Ticket**: `id` (UUID), `subject` (String), `description` (Text), `requesterEmail` (String), `priority` (Enum), `category` (String), `status` (Enum), `isArchived` (Boolean), `primaryAssigneeId` (FK to User), `slaTargetAt` (DateTime), `pendingEnteredAt` (DateTime), `resolvedAt` (DateTime), `closedAt` (DateTime), timestamps.
   - **TicketCollaborator**: `ticketId` (FK), `userId` (FK). Composite PK.
   - **Reply**: `id` (UUID), `body` (Text), `isInternal` (Boolean), `authorType` (Enum: AGENT/CUSTOMER), `ticketId` (FK), `authorId` (FK, nullable), `createdAt` (DateTime).
-  - **AuditTimeline**: `id` (UUID), `ticketId` (FK), `actorId` (FK), `eventType` (Enum), `oldStatus` (Enum), `newStatus` (Enum), `oldAssigneeId` (String), `newAssigneeId` (String), `replyId` (FK), `createdAt` (DateTime).
+  - **AuditTimeline**: `id` (UUID), `ticketId` (FK), `actorId` (FK), `eventType` (Enum), `oldStatus` (Enum), `newStatus` (Enum), `oldAssigneeId` (String), `newAssigneeId` (String), `replyId` (FK), `collaboratorId` (FK), `createdAt` (DateTime).
   - **SlaAcknowledgment**: `id` (UUID), `ticketId` (FK), `agentId` (FK), `breachTime` (DateTime), `acknowledgedAt` (DateTime).
 
 - **Which relationships are one-to-many, and which are many-to-many?**
@@ -15,13 +15,13 @@ Answer each of these, in your own words.
   - **Many-to-many**: `Ticket` <-> `User` (for collaborators). Modeled explicitly using the `TicketCollaborator` join table to easily query tickets for a specific user (both assigned and collaborated).
 
 - **Which constraints are enforced by the database, and which by application code — and why did you draw the line there?**
-  - **Database**: Foreign key integrity (preventing replies to deleted tickets), unique constraints (emails), and enums (restricting roles, statuses, and priorities to valid types). Additionally, `UPDATE` and `DELETE` on `AuditTimeline` will be disabled via PostgreSQL `REVOKE` (using `$queryRaw`). The DB handles these because they are immutable structural rules.
-  - **Application**: Ticket lifecycle rules (New -> Open -> Pending -> Resolved -> Closed), fixed-window reopening, and SLA clock pause/resume logic. Furthermore, **role-based permissions** are strictly enforced here: specifically, Agents cannot transition tickets to `CLOSED` (only Supervisors can), and Agents are completely locked out of reassigning tickets away from themselves (even if they are a collaborator, they cannot change `primaryAssigneeId` to anyone). The app handles these because they involve business logic, complex state machines, and time arithmetic which are much easier to express and test in code than in database triggers.
+  - **Database**: Foreign key integrity (preventing replies to deleted tickets), unique constraints (emails), and enums (restricting roles, statuses, and priorities to valid types). The DB handles these because they are immutable structural rules.
+  - **Application**: Ticket lifecycle rules (New -> Open -> Pending -> Resolved -> Closed), fixed-window reopening, and SLA clock pause/resume logic. Furthermore, the **immutability of the `AuditTimeline`** is enforced here (the application is strictly append-only for this table). **Role-based permissions** are also strictly enforced in code: specifically, Agents cannot transition tickets to `CLOSED` (only Supervisors can), and Agents are completely locked out of reassigning tickets away from themselves. The app handles these because they involve business logic, complex state machines, and time arithmetic which are much easier to express and test in code than in database triggers.
 
 - **What did you deliberately denormalise?**
   - I denormalized SLA tracking onto the `Ticket` table (`slaTargetAt` and `pendingEnteredAt`). Instead of calculating the current SLA target dynamically on every page load by summing all status transition timestamps from `AuditTimeline` (which would be slow and complex), we update the `slaTargetAt` field in code whenever a ticket leaves the "Pending" status based on the time it spent in pending. This makes finding "breaching" tickets a simple `WHERE slaTargetAt < NOW()` query.
   - I also stored `resolvedAt` and `closedAt` on the `Ticket` table instead of inferring them from `updatedAt` or the timeline, ensuring that week-over-week aggregations and reopen window logic remain accurate even if tickets are edited after closure.
 
-- **What would break first if this had 100x the data?**
-  - Text search over ticket subject and description using SQL `LIKE` `%query%` would become a massive bottleneck and require a full-text search index (e.g., PostgreSQL `to_tsvector`).
-  - The weekly dashboard aggregation (`GROUP BY` date bucket on the tickets/history) might become slow, requiring a materialized view.
+  - Text search over ticket subject and description using Prisma's `contains` filter (which translates to a wildcard `ILIKE` query) would become a massive bottleneck and require a full-text search index (e.g., PostgreSQL `to_tsvector`) or a dedicated search engine.
+  - The weekly dashboard aggregation (`GROUP BY` date bucket on the tickets/history) might become slow, requiring a materialized view or background aggregation jobs.
+  - *Mitigated:* Without explicit database indexes (`@@index([ticketId])`) on the `Reply` and `AuditTimeline` tables, loading the Ticket Details modal would require full sequential table scans for every request. We preemptively added these B-tree indexes to prevent this massive bottleneck as the tables grow.

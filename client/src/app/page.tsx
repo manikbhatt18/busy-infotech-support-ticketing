@@ -24,7 +24,8 @@ import {
   Archive,
   LogOut,
   User,
-  Tag
+  Tag,
+  LayoutList
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -317,28 +318,22 @@ export default function Dashboard() {
           </button>
         </header>
 
-        {/* Top-level view toggle */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveView('analytics')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              activeView === 'analytics'
-                ? 'bg-indigo-50 text-indigo-700'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" /> Analytics
-          </button>
+        {/* Top Navigation Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1 bg-white p-1 rounded-lg shadow-sm border border-gray-200 mb-6 sm:mb-8">
           <button
             onClick={() => setActiveView('queue')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              activeView === 'queue'
-                ? 'bg-indigo-50 text-indigo-700'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
+            className={`flex items-center justify-center sm:justify-start gap-2 rounded-md px-3 sm:px-4 py-2 text-sm font-medium transition-colors ${activeView === 'queue' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
           >
-            <ListTodo className="w-4 h-4" /> Ticket Queue
+            <LayoutList className="w-4 h-4" /> Ticket Queue
           </button>
+          
+          <button
+            onClick={() => setActiveView('analytics')}
+            className={`flex items-center justify-center sm:justify-start gap-2 rounded-md px-3 sm:px-4 py-2 text-sm font-medium transition-colors ${activeView === 'analytics' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+          >
+            <BarChart3 className="w-4 h-4" /> Analytics Dashboard
+          </button>
+
           <button
             onClick={() => { setActiveView('alerts'); fetchAlertCount(); }}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium relative transition-colors ${
@@ -379,34 +374,34 @@ export default function Dashboard() {
         ) : (
         <>
 
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-4 gap-4 sm:gap-0">
+          <div className="flex gap-2 bg-gray-100 p-1 rounded-lg w-full sm:w-auto">
             <button
               onClick={() => { setIsArchivedView(false); setPage(1); }}
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${!isArchivedView ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              className={`flex-1 sm:flex-none flex justify-center items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${!isArchivedView ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
             >
               <Inbox className="w-4 h-4" /> Active
             </button>
             <button
               onClick={() => { setIsArchivedView(true); setPage(1); }}
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${isArchivedView ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              className={`flex-1 sm:flex-none flex justify-center items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${isArchivedView ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
             >
               <Archive className="w-4 h-4" /> Archived
             </button>
           </div>
           <button
             onClick={openCreateModal}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition-colors"
+            className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition-colors w-full sm:w-auto"
           >
             <Plus className="w-4 h-4" /> Create Ticket
           </button>
         </div>
 
         {/* Filters Bar */}
-        <div className="rounded-xl bg-white shadow-sm border border-gray-200 p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+        <div className="rounded-xl bg-white shadow-sm border border-gray-200 p-4 sm:p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-100 pb-4 gap-3 sm:gap-0">
             <h3 className="text-sm font-semibold text-gray-900">Filters & Search</h3>
-            <div className="flex gap-3">
+            <div className="flex gap-3 w-full sm:w-auto justify-between sm:justify-start">
               <button onClick={handleExportCsv} className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
                 <Download className="w-4 h-4" /> Export CSV
               </button>
@@ -489,19 +484,18 @@ export default function Dashboard() {
         </div>
 
         {/* Bulk Actions Toolbar */}
-        {/* Bulk Actions Toolbar */}
         {selectedTicketIds.length > 0 && (
-          <div className="rounded-xl bg-gray-900 shadow-xl border border-gray-800 p-4 flex items-center justify-between animate-in slide-in-from-top-2 fade-in">
+          <div className="rounded-xl bg-gray-900 shadow-xl border border-gray-800 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between animate-in slide-in-from-top-2 fade-in gap-3 sm:gap-0">
             <span className="text-sm font-medium text-white flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-indigo-400" />
               {selectedTicketIds.length} ticket(s) selected
             </span>
-            <div className="flex gap-3">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <select
                   value={bulkAssigneeId}
                   onChange={(e) => setBulkAssigneeId(e.target.value)}
-                  className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-indigo-500"
+                  className="w-full sm:w-auto rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-indigo-500"
                 >
                   <option value="">Assign to...</option>
                   {users.filter(u => u.role === 'AGENT').map(u => (
@@ -511,14 +505,14 @@ export default function Dashboard() {
                 <button
                   onClick={handleBulkReassign}
                   disabled={!bulkAssigneeId}
-                  className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 shadow-sm disabled:opacity-50 transition-colors"
+                  className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 shadow-sm disabled:opacity-50 transition-colors shrink-0"
                 >
                   Reassign
                 </button>
               </div>
               <button
                 onClick={handleBulkClose}
-                className="rounded-lg bg-gray-800 border border-gray-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700 shadow-sm transition-colors"
+                className="w-full sm:w-auto rounded-lg bg-gray-800 border border-gray-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700 shadow-sm transition-colors"
               >
                 Close Selected
               </button>
@@ -552,8 +546,8 @@ export default function Dashboard() {
               <li className="px-6 py-8 text-center text-gray-500">No tickets found matching your filters.</li>
             ) : (
               tickets.map((ticket) => (
-                <li key={ticket.id} className="px-6 py-4 hover:bg-gray-50 flex items-center transition-colors group">
-                  <div className="mr-4">
+                <li key={ticket.id} className="px-4 sm:px-6 py-4 hover:bg-gray-50 flex items-start sm:items-center transition-colors group">
+                  <div className="mr-3 sm:mr-4 mt-1 sm:mt-0">
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
@@ -561,14 +555,14 @@ export default function Dashboard() {
                       onChange={() => toggleSelectTicket(ticket.id)}
                     />
                   </div>
-                  <div className="flex items-center justify-between flex-1">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between flex-1 gap-3 sm:gap-0 min-w-0">
                     <div 
-                      className="cursor-pointer flex-1 mr-4"
+                      className="cursor-pointer flex-1 mr-0 sm:mr-4 min-w-0 w-full"
                       onClick={() => setDetailsModalTicket(ticket)}
                     >
-                      <div className="flex items-center gap-3 mb-1">
-                        <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">{ticket.subject}</p>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                        <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors w-full sm:w-auto truncate">{ticket.subject}</p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium border ${
                           ticket.status === 'NEW' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                           ticket.status === 'OPEN' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                           ticket.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
@@ -577,7 +571,7 @@ export default function Dashboard() {
                         }`}>
                           {ticket.status}
                         </span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium border ${
                           ticket.priority === 'URGENT' ? 'bg-red-50 text-red-700 border-red-200' :
                           ticket.priority === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
                           ticket.priority === 'MEDIUM' ? 'bg-blue-50 text-blue-700 border-blue-200' :
@@ -587,10 +581,10 @@ export default function Dashboard() {
                         </span>
                       </div>
                       
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {ticket.requesterEmail}</span>
-                        <span className="flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" /> {ticket.category}</span>
-                        <span className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] sm:text-xs text-gray-500">
+                        <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> {ticket.requesterEmail}</span>
+                        <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> {ticket.category}</span>
+                        <span className="flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           Assignee: {ticket.primaryAssignee?.name || 'Unassigned'}
                         </span>

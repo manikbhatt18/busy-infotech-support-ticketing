@@ -249,34 +249,34 @@ export default function TicketDetailsModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-gray-900/60 p-4 animate-in fade-in duration-200">
-      <div className="flex h-[90vh] w-full max-w-6xl flex-col rounded-2xl bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-gray-900/60 p-0 sm:p-4 animate-in fade-in duration-200">
+      <div className="flex h-[100dvh] sm:h-[90vh] w-full max-w-6xl flex-col sm:rounded-2xl bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
-          <div className="flex-1 min-w-0 flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-gray-900 truncate">
+        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 py-4 shrink-0">
+          <div className="flex-1 min-w-0 flex items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 truncate w-full sm:w-auto">
               {liveTicket.subject}
             </h2>
-            <span className={`rounded-md px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${statusColors[liveTicket.status] ?? 'bg-gray-100 text-gray-700'}`}>
+            <span className={`rounded-md px-2 py-0.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider ${statusColors[liveTicket.status] ?? 'bg-gray-100 text-gray-700'}`}>
               {liveTicket.status}
             </span>
             {slaDisplay && (
-              <span className={`rounded-md border px-2.5 py-0.5 text-xs font-semibold flex items-center gap-1 ${slaDisplay.color}`}>
-                <Clock className="w-3.5 h-3.5" /> {slaDisplay.label}
+              <span className={`rounded-md border px-2 py-0.5 text-[10px] sm:text-xs font-semibold flex items-center gap-1 ${slaDisplay.color}`}>
+                <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> {slaDisplay.label}
               </span>
             )}
           </div>
-          <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100">
+          <button onClick={onClose} className="ml-2 sm:ml-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100 shrink-0">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Goal 4: Status Transition Controls */}
         {legalTransitions.length > 0 && (
-          <div className="border-b border-gray-200 bg-gray-50 px-6 py-3 flex items-center gap-3 flex-wrap">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4" /> Move Status:
+          <div className="border-b border-gray-200 bg-gray-50 px-4 sm:px-6 py-3 flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
+            <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1 w-full sm:w-auto mb-1 sm:mb-0">
+              <CheckCircle2 className="w-4 h-4 hidden sm:block" /> Move Status:
             </span>
             {legalTransitions.map((status) => (
               <button
@@ -303,11 +303,11 @@ export default function TicketDetailsModal({
         )}
 
         {/* 2-Column Split Body */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden relative">
           
           {/* Main Left Column (Conversation & Composer) */}
-          <div className="flex flex-col flex-1 border-r border-gray-200 overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex flex-col flex-1 lg:border-r border-gray-200 lg:overflow-hidden min-h-min">
+            <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
             {loadingReplies ? (
               <div className="flex justify-center items-center h-32"><Loader /></div>
             ) : replies.map((item) => {
@@ -360,8 +360,8 @@ export default function TicketDetailsModal({
                         : "bg-white border-gray-200 shadow-sm mr-4"
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-start sm:items-center justify-between mb-3 flex-col sm:flex-row gap-2 sm:gap-0">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <div className={`flex items-center justify-center w-6 h-6 rounded-full text-white text-xs ${
                         item.isInternal ? "bg-yellow-500" : isCustomer ? "bg-indigo-500" : "bg-gray-600"
                       }`}>
@@ -369,43 +369,43 @@ export default function TicketDetailsModal({
                       </div>
                       <span className="font-semibold text-sm text-gray-900">{authorName}</span>
                       {item.isInternal && (
-                        <span className="flex items-center gap-1 rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                        <span className="flex items-center gap-1 rounded-md bg-yellow-100 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-yellow-800">
                           <Lock className="w-3 h-3" /> Internal Note
                         </span>
                       )}
                       {isCustomer && (
-                        <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800">
+                        <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-indigo-800">
                           Customer
                         </span>
                       )}
                       {!item.isInternal && !isCustomer && (
-                        <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                        <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-gray-700">
                           {item.author?.role === 'SUPERVISOR' ? 'Supervisor' : 'Agent'}
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-gray-500 font-medium">
+                    <span className="text-[10px] sm:text-xs text-gray-500 font-medium">
                       {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
                     </span>
                   </div>
-                  <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">{item.body}</p>
+                  <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed break-words">{item.body}</p>
                 </div>
               );
             })}
           </div>
 
             {/* Reply Composer */}
-            <div className="border-t border-gray-200 bg-white p-6 shrink-0">
-              <div className="space-y-4">
+            <div className="sticky bottom-0 z-20 border-t border-gray-200 bg-white p-4 sm:p-6 shrink-0 lg:static shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] lg:shadow-none">
+              <div className="space-y-3 sm:space-y-4">
                 <textarea
                   rows={3}
                   placeholder="Type your reply here..."
-                  className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 sm:px-4 sm:py-3 text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
                   value={replyBody}
                   onChange={(e) => setReplyBody(e.target.value)}
                 />
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                   <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                     <input
                       type="checkbox"
@@ -417,12 +417,12 @@ export default function TicketDetailsModal({
                     Mark as Internal Note
                   </label>
 
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
                     <button
                       type="button"
                       disabled={submitting || isInternal}
                       onClick={() => handlePostReply('CUSTOMER')}
-                      className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm"
+                      className="flex-1 sm:flex-none rounded-lg border border-gray-300 bg-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm"
                       title={isInternal ? "Customers cannot post internal notes" : "Simulate an incoming response from the customer"}
                     >
                       Customer Reply
@@ -431,7 +431,7 @@ export default function TicketDetailsModal({
                       type="button"
                       disabled={submitting}
                       onClick={() => handlePostReply('AGENT')}
-                      className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-sm"
+                      className="flex-1 sm:flex-none rounded-lg bg-indigo-600 px-3 sm:px-5 py-2 text-xs sm:text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-sm"
                     >
                       Send Reply
                     </button>
@@ -442,7 +442,7 @@ export default function TicketDetailsModal({
           </div>
 
           {/* Right Sidebar (Metadata) */}
-          <div className="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto shrink-0 flex flex-col gap-6">
+          <div className="w-full lg:w-80 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200 p-4 sm:p-6 lg:overflow-y-auto shrink-0 flex flex-col gap-6">
             
             {/* Metadata Block */}
             <div className="space-y-4">

@@ -17,55 +17,21 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 - **Rejected:** Calculating the SLA target dynamically on the fly by summing paused times from `AuditTimeline` events every time we need to check alerts.
 - **Why:** Computing SLAs from an event log at read-time across the entire active ticket queue is extremely expensive and complex to query (finding tickets that *will* breach soon). Storing `slaTargetAt` makes the query as simple as `WHERE slaTargetAt < NOW()`. The trade-off is slightly more complex write logic when transitioning statuses, but this is a read-heavy system where alert queues need to be lightning fast.
 
-## Decision 3: Reply Author Modeling
 
-- **Chose:** An explicit `ReplyAuthorType` enum (`AGENT` vs `CUSTOMER`) on the `Reply` model, with a nullable `authorId` that is only set for agents.
-- **Rejected:** Attributing customer replies to a synthetic "System" user or making all customers full `User` accounts in the system.
-- **Why:** The audit trail (Goal 9) must record exactly who acted, and a fake "System" user corrupts this history. Furthermore, Goal 4's clock-resume logic explicitly needs to query on whether a reply came from a customer. An explicit type ensures the system can differentiate without complex JOINs or brittle string matching on a system account.
-
-## Decision 4: Agent Ticket Closing Permissions
-
-- **Chose:** Agents are strictly prevented from transitioning a ticket to the `CLOSED` status, even if they are the primary assignee.
-- **Rejected:** Allowing agents to close their own tickets.
-- **Why:** Goal 1 explicitly states "Supervisors can reassign any ticket to any agent, close tickets, and see the entire queue." This specific callout for supervisors implies that closing tickets is an elevated privilege not granted to agents.
-
-## Decision 5: Collaborator Reassignment Interpretation
-
-- **Chose:** Agents (whether primary assignee or collaborator) cannot change the `primaryAssigneeId` to anyone else. They are locked out of reassignment entirely.
-- **Rejected:** Allowing a collaborator to reassign the ticket to themselves, or allowing the primary assignee to reassign it to a collaborator.
-- **Why:** Goal 1 states "Agents ... cannot reassign a ticket away from themselves." If a collaborator reassigned a ticket to themselves, they would be reassigning it *away* from the current primary assignee (another agent), which violates the rule. Therefore, agents cannot modify the assignee field at all.
-
-## Decision 6: Initial Ticket Assignment (Goal 2)
+## Decision 3: Initial Ticket Assignment (Goal 2)
 
 - **Chose:** When an Agent or Supervisor creates a ticket, they are automatically set as the `primaryAssigneeId`.
 - **Rejected:** Leaving the ticket unassigned (`primaryAssigneeId: null`) upon creation.
 - **Why:** Goal 1 strictly restricts Agents to only act on tickets where they are the primary assignee or a collaborator. If an Agent created a ticket and it was left unassigned, they would immediately lose all read/write access to the very ticket they just created, which is a poor user experience. Automatically assigning the creator ensures they maintain access and can continue editing or triaging the ticket.
 
-## Decision 7: Requester Modeling
+## Decision 4: Requester Modeling
 
 - **Chose:** Store the `requesterEmail` as a simple string on the `Ticket` model.
 - **Rejected:** Creating a separate `Customer` or `Requester` user model with authentication and linking it via a foreign key.
 - **Why:** Customers never authenticate into this system. Modeling them as a `User` would bloat the `User` table with non-authenticated records and complicate the authentication logic. A plain string is sufficient for tracking the requester and interacting with them via hypothetical email channels.
 
-## Decision 8: AuditTimeline Exclusions
 
-- **Chose:** To *not* write to the `AuditTimeline` when users edit ticket details (subject, description, priority, category) or when they archive/restore tickets.
-- **Rejected:** Creating a generic `TICKET_EDITED` or `TICKET_ARCHIVED` event for the timeline.
-- **Why:** Goal 9 strictly defines the required audit history: "when it changed status, when it was reassigned, and any replies." There is no requirement to log plain field edits or queue visibility changes. Expanding the timeline to include these would pollute the strictly required event types.
-
-## Decision 9: AuthorType Verification (Goal 3)
-
-- **Chose:** To trust the submitting agent's self-reported authorType.
-- **Rejected:** Independently verifying the author or refusing simulated customer replies.
-- **Why:** authorType is a self-reported flag set by the submitting agent, not independently verified — there is no proof a customer actually said what's logged as their reply. This is an accepted limitation given the assignment's scope excludes email/customer-portal integration; a production system would instead derive authorType: CUSTOMER automatically from an inbound email webhook, removing agent self-reporting from the trust boundary entirely.
-
-## Decision 10: AuditTimeline Actor vs Reply Author
-
-- **Chose:** AuditTimeline.actor always records the logged-in user submitting the API request, even for simulated customer replies.
-- **Rejected:** Setting AuditTimeline.actorId to null or a customer ID for simulated customer replies.
-- **Why:** AuditTimeline.actor = who performed the logging action in the app, while Reply.authorType = who the message is attributed to — these are deliberately different fields answering different questions, not redundant. Since customers never authenticate, they cannot be the actor performing the logging action in this system.
-
-## Decision 11: Full Status Transition Table (Goal 4)
+## Decision 5: Full Status Transition Table (Goal 4)
 
 - **Chose:** An explicit allow-list state machine. Every `PATCH /tickets/:id/status` request checks `ALLOWED_TRANSITIONS[currentStatus].includes(newStatus)` before any other logic runs.
 - **Rejected:** Ad-hoc special-case checks only for edge cases (e.g., only checking agents-can't-close and reopen-window). Without an explicit table, illegal jumps like `NEW → CLOSED` or `RESOLVED → PENDING` would silently succeed, which directly violates the spec's "Any other move must be rejected by the server with a message explaining why."
@@ -78,28 +44,7 @@ RESOLVED → [CLOSED, OPEN]
 CLOSED   → [OPEN]   (only within 7-day window, enforced separately)
 ```
 
-**Rationale per row:**
-- `NEW → OPEN`: Normal pickup — agent begins work. Only legal move from NEW.
-- `NEW → anything else`: Brand-new tickets must be acknowledged (opened) first. Jumping to RESOLVED or CLOSED without ever working the ticket is meaningless.
-- `OPEN → PENDING`: Agent has replied and is waiting on the customer.
-- `OPEN → RESOLVED`: Agent resolves without the ticket ever going pending.
-- `OPEN → CLOSED`: Rejected — must resolve first. Closing is a deliberate supervisor finalisation of an already-resolved ticket.
-- `PENDING → OPEN`: Customer replied (automatic) or agent manually resumes. Only legal move from PENDING.
-- `PENDING → RESOLVED`: Rejected — cannot resolve while waiting on a customer. Agent must re-engage (→ OPEN) first.
-- `PENDING → CLOSED`: Rejected — same reason, plus SLA clock semantics become undefined if we close while paused.
-- `RESOLVED → CLOSED`: Supervisor confirms the ticket is permanently done.
-- `RESOLVED → OPEN`: Allowed — reopening before the supervisor has formally closed it (e.g., customer calls back). This avoids requiring a two-step `RESOLVED → CLOSED → OPEN` for a simple reopen.
-- `CLOSED → OPEN`: Allowed within the 7-day window (see Decision 13). Only move from CLOSED.
-
-**Same-status requests** (e.g., `PENDING → PENDING`) are rejected with HTTP 422 and a specific message — treated as an error rather than a silent no-op, so callers cannot silently send stale state.
-
-**Permission check order in `updateTicketStatus`:**
-1. `canAgentActOnTicket` — checked first, before the transition table. An agent with no relationship to the ticket cannot attempt any status change regardless of whether the transition would otherwise be legal.
-2. Transition table.
-3. Role check (agents cannot set CLOSED).
-4. 7-day reopen window (for CLOSED → OPEN only).
-
-## Decision 12: SLA Recalculation Formula on Priority Change (Goal 4)
+## Decision 6: SLA Recalculation Formula on Priority Change (Goal 4)
 
 - **Chose:** Full reset: `slaTargetAt = NOW + SLA_HOURS[newPriority]`.
 - **Rejected:** Proportional carry-over (preserve the fraction of time already consumed, rescale to new window).
@@ -117,106 +62,49 @@ When priority changes AND `ticket.status === 'PENDING'`, BOTH fields must reset 
   - The full 12h pause is counted, but only 2h of it (T+10h → T+12h) happened under the new URGENT priority. The 10h before the priority change is double-counted, giving the ticket 11h instead of its intended 1h URGENT window.
 - **Correct fix:** also reset `pendingEnteredAt = NOW` so the pause timer restarts cleanly from the moment of the priority change. Resume at T=12h then gives: `newSlaTargetAt = T+11h + (T+12h − T+10h) = T+11h + 2h = T+13h` — exactly 1h after T=12h, the correct URGENT window.
 
-## Decision 13: Who Can Reopen a Closed Ticket (Goal 4)
 
-- **Chose:** Any agent who can act on the ticket (primary assignee or collaborator), or any supervisor, may reopen a CLOSED ticket within the 7-day window.
-- **Rejected:** Supervisors only (matching who can close).
-- **Why:** Once a ticket is reopened it lands back with the assigned agent. Locking only supervisors into reopening would mean agents can't self-serve re-engagement on tickets they own — unnecessary workflow friction for a common case (customer calls back after closure). Reopening always moves the ticket to `OPEN` (not to whatever status it was before closing). `resolvedAt` and `closedAt` are cleared on reopen. A fresh SLA window is assigned based on current priority.
 
-## Decision 14: SLA Target Hours and Reopening Window Values (Goal 4)
-
-- **Chose:** URGENT=1h, HIGH=4h, MEDIUM=24h, LOW=48h. Reopening window=7 days.
-- **Why these numbers:** The spec leaves both values explicitly to the implementer. The SLA tiers match common support-industry tiered response standards (critical/same-hour, high/same-half-day, normal/next-business-day, low/two-day). 7 days gives supervisors and agents a full work-week to catch accidental closures, which is the standard "hold period" in most helpdesk systems.
-
-## Decision 15: canManageCollaborators vs canAgentActOnTicket (Goal 5)
+## Decision 7: canManageCollaborators vs canAgentActOnTicket (Goal 5)
 
 - **Chose:** A dedicated `canManageCollaborators` helper that only permits SUPERVISOR or the primary assignee to add/remove collaborators.
 - **Rejected:** Reusing the existing `canAgentActOnTicket` helper for `addCollaborator` and `removeCollaborator`.
 - **Why:** `canAgentActOnTicket` deliberately allows collaborators to act on a ticket. If reused for collaborator management, it would allow a collaborator to add/remove *other* collaborators, which is a privilege escalation path. Only the ticket owner (primary assignee) or a supervisor should dictate who else gets access.
 
-## Decision 16: Only AGENTs as Collaborators (Goal 5)
+## Decision 8: Only AGENTs as Collaborators (Goal 5)
 
 - **Chose:** To enforce that only users with `role === 'AGENT'` can be added as collaborators.
 - **Rejected:** Allowing a SUPERVISOR to be added as a collaborator.
 - **Why:** Supervisors inherently have full read/write access to every ticket in the system. Adding them to the `TicketCollaborator` join table creates meaningless redundancy in the database and implies a limitation on their access that doesn't actually exist.
 
-## Decision 17: Supervisor "My Tickets" Toggle Deprioritization (Goal 5)
 
-- **Chose:** To deliberately exclude a "My Tickets" view/toggle for Supervisors from the Goal 5 scope.
-- **Rejected:** Building the frontend toggle for supervisors.
-- **Why:** The spec requires: *"Every agent can see one list of every ticket where they are the primary assignee or a collaborator."* Agents already get this exact behavior automatically via Goal 1's `OR`-filter (which restricts them to only their assigned/collaborating tickets). A supervisor toggle to filter their view down to their *own* assignments is a UX convenience, not a Goal 5 requirement. Building it now would consume time on a non-required feature while Goals 6-10 remain unimplemented.
-
-## Decision 18: Query Construction and Security (Goal 6)
+## Decision 9: Query Construction and Security (Goal 6)
 
 - **Chose:** Used Prisma's `AND` operator to strictly isolate the role-based security filter from user-provided search filters.
 - **Rejected:** Combining user search terms and the agent security restriction using multiple top-level `OR` clauses in a single object spread.
 - **Why (Reversed/Corrected):** My initial draft used a single spread object for the `where` clause. When an agent used the search filter (which uses an `OR` condition across subject and description), it completely overwrote the security `OR` condition that restricts agents to their own tickets. This would have caused a massive privilege escalation bug where any agent could search the entire system's tickets. Wrapping both `OR` conditions in an `AND` array forces Prisma to apply them compositively.
 
-## Decision 19: Category Filtering Exact Match (Goal 6)
 
-- **Chose:** The category filter requires an exact string match rather than a partial (`contains`) match.
-- **Why:** The spec does not explicitly mandate how the category filter should behave. However, since categories are effectively enumerated labels (e.g., "Billing", "Bug"), a partial match creates false positives. Searching for "Bill" shouldn't return "Billing Errors" unless explicitly asked for. It's safer and more expected for category dropdowns/inputs to use exact equality.
 
-## Decision 20: Assignee Filter (Goal 6)
-
-- **Chose:** The `assigneeId` filter only checks against `primaryAssigneeId` and ignores the `collaborators` relation.
-- **Why:** The spec treats the concepts of "assignee" and "collaborator" as distinct. Filtering for "Assignee = Agent X" implies looking for tickets where Agent X is the primary owner, not tickets where they happen to be observing/collaborating.
-
-## Decision 21: Priority Sorting Native Execution (Goal 6)
-
-- **Chose:** We sort by `priority` using Prisma's standard `orderBy: { priority: 'desc' }`.
-- **Why:** `TicketPriority` is defined as a PostgreSQL `enum` (`LOW`, `MEDIUM`, `HIGH`, `URGENT`). PostgreSQL natively understands that enum values are ordered based on the sequence they were declared in the schema, not alphabetically. This means `desc` perfectly sorts `URGENT` at the top without needing a raw SQL `CASE` mapping.
-
-## Decision 26: Partial Bulk Action Failure Handling (Goal 7)
+## Decision 10: Partial Bulk Action Failure Handling (Goal 7)
 
 - **Chose:** Return `200 OK` with an array of per-ticket execution results `{ ticketId, success, reason }` instead of failing the entire HTTP transaction when one ticket fails.
 - **Why:** In bulk operations, some tickets may succeed (e.g. valid transition, user has permission) while others fail (e.g. ticket already CLOSED, permission denied). Rolling back the entire bulk operation or aborting halfway creates poor UX and prevents partial progress. Returning per-ticket status allows the UI to display a detailed modal summarizing exact successes and failure reasons for each ticket.
 
-## Decision 27: CSV Export Streaming and Role Security (Goal 7)
-
-- **Chose:** `GET /tickets/export` generates CSV formatted output using the exact same `where` security filtering, search, and sorting logic as `GET /tickets`.
-- **Why:** Ensures exported CSV data strictly adheres to agent scope rules (agents only export tickets assigned to or collaborated on by them) and respects active search/filter options.
 
 
-## Decision 22: Weekly Resolution Chart Data Source (Goal 8) — Later reversed
+
+## Decision 11: Weekly Resolution Chart Data Source (Goal 8) — Later reversed
 
 - **Chose (originally):** Use `$queryRaw` with `date_trunc('week', "resolvedAt")` for the 8-week aggregation, since Prisma's `groupBy` doesn't support date-truncation expressions.
 - **Reversed to:** Fetch resolved tickets via a standard Prisma query (`resolvedAt >= 8 weeks ago`), bucket into 8 trailing 7-day windows in JavaScript.
 - **Why reversed:** Simpler code, avoids raw SQL for a single feature, and at this dataset's scale the performance difference is negligible. Uses trailing 7-day windows counted back from `now`, not calendar weeks, to avoid timezone and partial-week edge cases.
 - **What breaks at 100× data:** This approach loads every ticket resolved in the last 8 weeks into memory to bucket manually — at high volume, that's real memory/transfer overhead a database-side `GROUP BY` wouldn't have. The original `$queryRaw` approach would be the correct fix at production scale.
 
-## Decision 23: "Resolved This Week" Definition (Goal 8)
 
-- **Chose:** "Resolved this week" means tickets where `resolvedAt >= NOW - 7 days` (trailing 7-day window from the current moment).
-- **Rejected:** Calendar-week definition (Monday 00:00 to Sunday 23:59).
-- **Why:** The spec says "resolved this week" without specifying calendar vs. trailing. A trailing window is timezone-agnostic, requires no locale configuration, and gives a consistent 7-day view regardless of when during the week the dashboard is viewed. A calendar-week definition would show near-zero results every Monday morning, which is misleading.
-
-## Decision 24: Default Landing View Per Role (Goal 8)
-
-- **Chose:** Supervisors default to the Analytics Dashboard view; Agents default to the Ticket Queue view.
-- **Rejected:** Same default for both roles.
-- **Why:** The spec says "a landing view shows headline numbers". Supervisors' primary daily task is oversight — headline metrics, SLA compliance, team workload distribution — so the analytics view is their natural starting point. Agents' primary task is working tickets — replying, transitioning, collaborating — so the queue is theirs. Both roles can toggle between views freely.
-
-## Decision 25: Agent Analytics Scope (Goal 8)
-
-- **Chose:** When an Agent views the Analytics Dashboard, all metrics are scoped to tickets where they are the primary assignee or a collaborator. Supervisors see system-wide metrics.
-- **Rejected:** Showing agents global company-wide stats.
-- **Why:** Agents can only act on their own tickets (Goal 1). Showing them global stats for tickets they have no access to would be confusing and could leak information about other agents' workloads. Scoping to their own tickets keeps the analytics consistent with what they see in the queue.
-
-## Decision 28: Near-Breach Threshold (Goal 10)
-
-- **Chose:** 30 minutes before `slaTargetAt` as the near-breach window.
-- **Rejected:** Using a percentage of the total SLA window (e.g. 10%), or a longer fixed window (e.g. 1 hour).
-- **Why:** The `TicketDetailsModal` already uses 30 minutes as the `urgentThresholdMs` to turn the SLA indicator orange. Using the same value for the alerts panel keeps the UX consistent — a ticket shows as "orange/urgent" in the detail view at the exact same moment it enters the alerts list.
-
-## Decision 29: Acknowledgment Tied to Breach Instance (Goal 10)
+## Decision 12: Acknowledgment Tied to Breach Instance (Goal 10)
 
 - **Chose:** The `SlaAcknowledgment.breachTime` field stores the ticket's current `slaTargetAt` at the moment of acknowledgment, tying the ack to a specific breach instance.
 - **Rejected:** Acknowledging just by `(ticketId, agentId)` — which would permanently suppress the alert even after a reopen.
 - **Why:** The spec explicitly says "If the ticket is later reopened and breaches its target response time again, the alert returns." On reopen, `updateTicketStatus` computes a fresh `slaTargetAt`. The old `SlaAcknowledgment` with the old `breachTime` no longer matches the new `slaTargetAt`, so the alert re-surfaces with zero extra logic. The `@@unique([ticketId, agentId, breachTime])` constraint in the schema was designed for exactly this pattern.
 
-## Decision 30: PENDING Tickets Excluded from Alerts (Goal 10)
 
-- **Chose:** Tickets in PENDING status are excluded from SLA alerts, even if their frozen `slaTargetAt` is in the past.
-- **Rejected:** Alerting on all tickets where `slaTargetAt < NOW`, regardless of status.
-- **Why:** Goal 4 explicitly pauses the SLA clock when a ticket enters PENDING. A PENDING ticket's `slaTargetAt` is frozen at its pre-pause value; it doesn't represent a real breach. Alerting on it would be a false positive. This is consistent with Goal 8's breaching-ticket count, which also uses `status: { notIn: ['RESOLVED', 'CLOSED', 'PENDING'] }`.

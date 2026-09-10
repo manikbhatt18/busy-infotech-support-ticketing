@@ -14,11 +14,11 @@ export const getAnalytics = async (req: AuthRequest, res: Response): Promise<voi
     // Build the base filter: agents see only their tickets, supervisors see everything.
     const baseWhere = user.role === 'AGENT'
       ? {
-          OR: [
-            { primaryAssigneeId: user.userId },
-            { collaborators: { some: { userId: user.userId } } }
-          ]
-        }
+        OR: [
+          { primaryAssigneeId: user.userId },
+          { collaborators: { some: { userId: user.userId } } }
+        ]
+      }
       : {};
 
     const now = new Date();
@@ -73,7 +73,7 @@ export const getAnalytics = async (req: AuthRequest, res: Response): Promise<voi
         by: ['status'],
         where: { ...baseWhere, isArchived: false },
         orderBy: { status: 'asc' },
-        _count: { id: true },
+        _count: { id: true },//how many ticket IDs exist in each group
       }),
 
       // Breakdown: by agent (primaryAssigneeId)
@@ -101,11 +101,11 @@ export const getAnalytics = async (req: AuthRequest, res: Response): Promise<voi
 
     const agentUsers = agentIds.length > 0
       ? await prisma.user.findMany({
-          where: { id: { in: agentIds } },
-          select: { id: true, name: true },
-        })
+        where: { id: { in: agentIds } },
+        select: { id: true, name: true },
+      })
       : [];
-
+    //map agent id to name
     const agentNameMap = new Map(agentUsers.map((u) => [u.id, u.name]));
 
     const agentBreakdown = agentBreakdownRaw.map((g) => ({

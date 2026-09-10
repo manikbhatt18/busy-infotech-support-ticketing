@@ -5,7 +5,7 @@ Fill this in and commit it. This is the first file we open.
 ## Links
 
 - **GitHub repository:** https://github.com/manikbhatt18/busy-infotech-support-ticketing
-- **Live application:** (Local / Not Deployed)
+- **Live application:** https://busy-infotech-support-ticketing.vercel.app/
 
 ## Notes for the reviewer
 
@@ -33,20 +33,20 @@ Mark each honestly. Partial is fine — say what is partial.
 
 | # | Goal | Status | Notes |
 |---|------|--------|-------|
-| 1 | Role-based Security | Done | Agents see only assigned/collaborated tickets; Supervisors see all. |
-| 2 | Searching & Filtering | Done | Implemented server-side with pagination and multiple dynamic filters. |
-| 3 | Sorting & Pagination | Done | Dynamic sorting by SLA, creation date, priority. |
-| 4 | Status Workflow | Done | Strict state machine on backend, UI only shows legal transitions. |
-| 5 | Threading & Notes | Done | Differentiates public replies vs internal notes. |
-| 6 | Bulk Actions | Done | Assign, Close, Archive in bulk via grid selection. |
-| 7 | CSV Export | Done | Server-side stream generation of CSV based on current filters. |
-| 8 | Analytics Dashboard | Done | Live metrics scoped by role, including 8-week resolution trends. |
-| 9 | Archiving | Done | Automated archiving logic handling closed tickets over 30 days old. |
-| 10 | SLA Alerts | Done | Navigation badge with polling, near-breach logic, and instance-specific acknowledgment. |
+| 1 | Accounts and roles | Done | Server-enforced: agents see only assigned/collaborating tickets, cannot close tickets or reassign away from themselves; supervisors have full access. |
+| 2 | Tickets | Done | Create/edit with subject, description, requester, priority, category; archive/restore removes from default views without deleting history. |
+| 3 | Replies inside tickets | Done | Internal notes vs. customer-visible replies, chronological, with strict role checks on posting. |
+| 4 | Status lifecycle & SLA | Done | Explicit legal-transition table enforced server-side; SLA clock pauses in Pending, resumes on customer reply; closed tickets reopenable within a fixed window. |
+| 5 | Collaborators | Done | Any number of agent collaborators per ticket; only the primary assignee or a supervisor can add/remove them. |
+| 6 | Finding tickets | Done | Server-side search, filters, sorting, and pagination with total match count. |
+| 7 | Bulk actions & CSV export | Done | Bulk reassign/close report per-ticket success/failure, not all-or-nothing; CSV export covers the full filtered set. |
+| 8 | Analytics dashboard | Done | Headline numbers, status/agent breakdowns, 8-week resolution chart, scoped by role. |
+| 9 | Immutable audit trail | Done | Every status change, reassignment, and reply logged permanently; enforced at the database level via a Postgres trigger blocking UPDATE/DELETE, not just app-level logic. |
+| 10 | SLA breach alerts | Done | Polling-based alert badge, near-breach and breach detection, per-instance acknowledgment. |
 
 ## How much time did you actually spend?
 
-Around 25 hours. It was slightly difficult to understand all the domain-specific terms (like SLA targeting, breach windows, and role-based lifecycles) at first, as this was my first time building a support ticketing system from scratch. Once the schema and core concepts clicked, building out the REST API and React components went much smoother.
+Around 20 hours. It was slightly difficult to understand all the domain-specific terms (like SLA targeting, breach windows, and role-based lifecycles) at first, as this was my first time building a support ticketing system from scratch. Once the schema and core concepts clicked, building out the REST API and React components went much smoother.
 
 ## What would you do next, with another 12 hours?
 

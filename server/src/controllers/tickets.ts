@@ -21,9 +21,9 @@ const canAgentActOnTicket = (user: JwtPayload, ticket: TicketWithCollaborators):
 // common support-industry standards (URGENT=1h, HIGH=4h, MEDIUM=24h, LOW=48h).
 const SLA_HOURS: Record<TicketPriority, number> = {
   URGENT: 1,
-  HIGH:   4,
+  HIGH: 4,
   MEDIUM: 24,
-  LOW:    48,
+  LOW: 48,
 };
 
 // Decision 14: 7-day closed-ticket reopening window. Spec says "a fixed window" and
@@ -41,11 +41,11 @@ const computeSlaTargetAt = (priority: TicketPriority): Date => {
 // is rejected with a human-readable message. Checked before any other logic runs.
 // See docs/decisions.md Decision 11 for the full rationale of each row.
 const ALLOWED_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
-  NEW:      ['OPEN'],
-  OPEN:     ['PENDING', 'RESOLVED'],
-  PENDING:  ['OPEN'],
+  NEW: ['OPEN'],
+  OPEN: ['PENDING', 'RESOLVED'],
+  PENDING: ['OPEN'],
   RESOLVED: ['CLOSED', 'OPEN'],
-  CLOSED:   ['OPEN'],  // only within 7-day window, checked separately
+  CLOSED: ['OPEN'],  // only within 7-day window, checked separately
 };
 
 const getTicketsQuerySchema = z.object({
@@ -555,7 +555,7 @@ export const updateTicketStatus = async (req: AuthRequest, res: Response): Promi
         : 0;
       updateData.pendingEnteredAt = null;
       if (existingTicket.slaTargetAt) {
-        updateData.slaTargetAt = new Date(existingTicket.slaTargetAt.getTime() + pauseMs);
+        updateData.slaTargetAt = new Date(existingTicket.slaTargetAt.getTime() + pauseMs);//pushes the sla deadline forward for pausesMs time.
       }
     }
 

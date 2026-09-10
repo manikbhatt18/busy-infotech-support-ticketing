@@ -9,8 +9,8 @@ The system is broken down into three main pieces:
 
 ## Where does each piece run?
 
-- **Frontend:** The React app runs directly in the user's browser, pulling static assets from the Next.js server (which would run on a platform like Vercel).
-- **Backend:** The Express server runs as a standalone Node.js process (which would run on a platform like Heroku, Render, or AWS ECS).
+- **Frontend:** The React app runs directly in the user's browser, pulling static assets from the Next.js server (which is running on vercel).
+- **Backend:** The Express server runs as a standalone Node.js process (which is running on Render).
 - **Database:** Hosted remotely on Supabase's cloud infrastructure, utilizing their built-in connection pooling (PgBouncer).
 
 ## What is the request path for one representative user action, end to end?
